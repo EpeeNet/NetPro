@@ -22,7 +22,9 @@ import java.util.Set;
 public class FencingClientApp extends Application {
 
     private static final String ROOM_ID = "room-001";
-    private static final String PLAYER_ID = "p1"; // 두 번째 클라는 "p2"로 바꿔서 실행
+    private static final String PLAYER_ID = "p1";
+
+
 
     private Canvas canvas;
     private GraphicsContext g;
