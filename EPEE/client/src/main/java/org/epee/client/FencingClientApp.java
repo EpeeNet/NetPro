@@ -309,14 +309,27 @@ public class FencingClientApp extends Application {
                     }
 
                     if ("assign".equals(type)) {
-                        String assignedId = (String) map.get("playerId");
-                        playerId = assignedId;
+    String assignedId = (String) map.get("playerId");
+    playerId = assignedId;
 
-                        Platform.runLater(() -> {
-                            chatPanel.appendMessage("[시스템] 당신은 " + playerId + " 로 배정되었습니다.");
-                        });
-                        return;
-                    }
+    Platform.runLater(() -> {
+        // ★ 서버가 배정한 p1/p2에 맞춰 초기 스폰 위치 설정
+        if ("p1".equals(playerId)) {
+            x = 100;
+            y = 300;
+            facingRight = true;
+        } else if ("p2".equals(playerId)) {
+            x = 700;
+            y = 300;
+            facingRight = false;
+        }
+
+        chatPanel.appendMessage("[시스템] 당신은 " + playerId + " 로 배정되었습니다.");
+    });
+
+    return;
+}
+
 
                     if ("error".equals(type)) {
                         String msg = (String) map.get("msg");

@@ -77,49 +77,70 @@ public class GameServer extends WebSocketServer {
     }
 
     private void handleJoin(WebSocket conn, Msg msg) {
-        String roomId = msg.room();
-        String nickname = msg.playerId(); // join 시에는 여기로 닉네임이 들어옴
+    String roomId = msg.room();
+    String nickname = msg.playerId(); // join 시에는 nickname이 들어옴
 
-        rooms.computeIfAbsent(roomId, k -> ConcurrentHashMap.newKeySet()).add(conn);
+    // 소켓을 room에 넣음
+    Set<WebSocket> conns = rooms.computeIfAbsent(roomId, k -> ConcurrentHashMap.newKeySet());
+    conns.add(conn);
 
-        GameState st = states.computeIfAbsent(roomId, this::emptyState);
+    // 현재 접속자 수 기준으로 p1/p2 배정
+    String assignedId;
+    double spawnX, spawnY;
+    boolean facingRight;
 
-        Player p1 = st.p1();
-        Player p2 = st.p2();
+    int count = conns.size();
 
-        String assignedId;
-        double spawnX, spawnY;
-        boolean facingRight;
+    if (count == 1) {
+        assignedId = "p1";
+        spawnX = 100;  // 왼쪽
+        spawnY = 300;
+        facingRight = true;
 
-        if (p1 == null) {
-            assignedId = "p1";
-            spawnX = 100;
-            spawnY = 300;
-            facingRight = true;
-            p1 = new Player(assignedId, spawnX, spawnY, facingRight, false);
-        } else if (p2 == null) {
-            assignedId = "p2";
-            spawnX = 700;
-            spawnY = 300;
-            facingRight = false;
-            p2 = new Player(assignedId, spawnX, spawnY, facingRight, false);
-        } else {
-            // 이미 2명 다 참
-            sendSimple(conn, "error", "Room full");
-            return;
-        }
+    } else if (count == 2) {
+        assignedId = "p2";
+        spawnX = 700;  // 오른쪽
+        spawnY = 300;
+        facingRight = false;
 
-        System.out.println("[" + roomId + "] " + nickname + " joined as " + assignedId);
-
-        GameState updated = new GameState(roomId, p1, p2, st.score1(), st.score2());
-        states.put(roomId, updated);
-
-        // 해당 클라이언트에게 배정된 playerId 알려주기
-        sendSimple(conn, "assign", Map.of("playerId", assignedId));
-
-        // 전체에게 현재 상태 브로드캐스트
-        broadcastState(roomId);
+    } else {
+        // 이미 방이 가득 찼으면
+        sendSimple(conn, "error", "Room full (only 2 players allowed)");
+        return;
     }
+
+    // GameState가 없다면 생성
+    GameState st = states.get(roomId);
+    if (st == null) {
+        Player initP1 = assignedId.equals("p1") ? new Player("p1", spawnX, spawnY, facingRight, false) : null;
+        Player initP2 = assignedId.equals("p2") ? new Player("p2", spawnX, spawnY, facingRight, false) : null;
+        st = new GameState(roomId, initP1, initP2, 0, 0);
+        states.put(roomId, st);
+    }
+
+    // 기존 상태 업데이트
+    Player newPlayer = new Player(assignedId, spawnX, spawnY, facingRight, false);
+
+    Player p1 = st.p1();
+    Player p2 = st.p2();
+
+    if (assignedId.equals("p1")) {
+        st = new GameState(roomId, newPlayer, p2, st.score1(), st.score2());
+    } else {
+        st = new GameState(roomId, p1, newPlayer, st.score1(), st.score2());
+    }
+
+    states.put(roomId, st);
+
+    // 배정된 ID 클라이언트에게 전달
+    sendSimple(conn, "assign", Map.of("playerId", assignedId));
+
+    // 전체에게 현재 상태 전달
+    broadcastState(roomId);
+
+    System.out.println("[" + roomId + "] " + nickname + " joined as " + assignedId);
+}
+
 
     private void sendSimple(WebSocket conn, String type, String msg) {
         try {
