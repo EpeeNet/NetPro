@@ -63,6 +63,18 @@ public class GameServer extends WebSocketServer {
                     states.put(msg.room(), updated);
                     broadcastState(msg.room());
                 }
+                case "chat" -> {
+                    String text = msg.playerId() + ": " + msg.chat();
+
+                    // 브로드캐스트용 JSON
+                    Map<String, String> chatMsg = Map.of(
+                            "type", "chat",
+                            "text", text
+                    );
+
+                    // 전체 룸에게 전송
+                    broadcastChat(msg.room(), chatMsg);
+                }
                 default -> System.out.println("Unknown message type: " + msg.type());
             }
         } catch (Exception e) {
@@ -140,6 +152,18 @@ public class GameServer extends WebSocketServer {
             e.printStackTrace();
         }
     }
+        private void broadcastChat(String roomId, Map<String, String> msg) {
+        try {
+            String json = mapper.writeValueAsString(msg);
+
+            Set<WebSocket> conns = rooms.getOrDefault(roomId, Set.of());
+            for (WebSocket c : conns) {
+                c.send(json);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 }
 
 /** ==== 서버측 record 정의 ==== */
@@ -150,7 +174,8 @@ record Msg(
         String playerId,    // "p1" or "p2"
         double x,
         double y,
-        boolean facingRight
+        boolean facingRight,
+        String chat
 ) {}
 
 record Player(

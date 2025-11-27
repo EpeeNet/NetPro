@@ -8,6 +8,7 @@ import javafx.application.Platform;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
@@ -17,6 +18,7 @@ import org.java_websocket.handshake.ServerHandshake;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 public class FencingClientApp extends Application {
@@ -40,17 +42,27 @@ public class FencingClientApp extends Application {
     private GameWebSocketClient wsClient;
     private final ObjectMapper mapper = new ObjectMapper();
 
+    private ChatPanel chatPanel;
     @Override
     public void start(Stage stage) {
         canvas = new Canvas(900, 500);
         g = canvas.getGraphicsContext2D();
 
-        StackPane root = new StackPane(canvas);
+        BorderPane root = new BorderPane(canvas);
+        root.setCenter(canvas);
+
+        // ChatPanel 추가
+        chatPanel = new ChatPanel(this);
+        root.setRight(chatPanel.getView());
+
         Scene scene = new Scene(root);
 
         stage.setTitle("ÉPÉE Client (" + PLAYER_ID + ")");
         stage.setScene(scene);
         stage.show();
+
+        scene.setOnMouseClicked(e -> canvas.requestFocus());
+        canvas.requestFocus(); // 최초 실행 시 포커스 부여
 
         // 키 입력 처리
         scene.setOnKeyPressed(e -> pressedKeys.add(e.getCode()));
@@ -88,6 +100,19 @@ public class FencingClientApp extends Application {
         };
         loop.start();
     }
+    public void sendChat(String text) {
+    if (text == null || text.isBlank()) return;
+
+    sendMsg(new Msg(
+            "chat",
+            ROOM_ID,
+            PLAYER_ID,
+            x,
+            y,
+            facingRight,
+            text
+    ));
+}
 
     private void update(double dt) {
         double speed = 280; // px/s
@@ -114,12 +139,10 @@ public class FencingClientApp extends Application {
         // 공격 입력
         if (pressedKeys.contains(javafx.scene.input.KeyCode.F) && !attacking) {
             attacking = true;
-            sendMsg(new Msg("attack", ROOM_ID, PLAYER_ID, x, y, facingRight));
-        }
+        sendMsg(new Msg("attack", ROOM_ID, PLAYER_ID, x, y, facingRight, null));        }
 
         // 위치 동기화 (간단히 매 프레임 전송)
-        sendMsg(new Msg("move", ROOM_ID, PLAYER_ID, x, y, facingRight));
-    }
+        sendMsg(new Msg("move", ROOM_ID, PLAYER_ID, x, y, facingRight, null));    }
 
     private void render() {
         g.setFill(Color.DARKSLATEGRAY);
@@ -207,7 +230,24 @@ public class FencingClientApp extends Application {
 
         @Override
         public void onMessage(String message) {
-            onServerState(message);
+            try {
+                Map<String, String> map = mapper.readValue(message, Map.class);
+
+                if ("chat".equals(map.get("type"))) {
+                    String text = map.get("text");
+
+                    Platform.runLater(() -> {
+                        chatPanel.appendMessage(text);
+                    });
+                    return;
+                }
+
+                // 그 외는 게임 상태 업데이트
+                onServerState(message);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
 
         @Override
@@ -230,7 +270,8 @@ record Msg(
         String playerId,
         double x,
         double y,
-        boolean facingRight
+        boolean facingRight,
+        String chat
 ) {}
 
 record Player(
