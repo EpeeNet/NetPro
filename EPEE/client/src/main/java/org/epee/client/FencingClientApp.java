@@ -1,32 +1,34 @@
 package org.epee.client;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import javafx.animation.AnimationTimer;
-import javafx.application.Application;
-import javafx.application.Platform;
-import javafx.scene.Scene;
-import javafx.scene.canvas.Canvas;
-import javafx.scene.canvas.GraphicsContext;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.StackPane;
-import javafx.scene.paint.Color;
-import javafx.stage.Stage;
-import org.java_websocket.client.WebSocketClient;
-import org.java_websocket.handshake.ServerHandshake;
-
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import org.java_websocket.client.WebSocketClient;
+import org.java_websocket.handshake.ServerHandshake;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import javafx.animation.AnimationTimer;
+import javafx.application.Application;
+import javafx.application.Platform;
+import javafx.scene.Scene;
+import javafx.scene.canvas.Canvas;
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.control.TextInputDialog;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.paint.Color;
+import javafx.stage.Stage;
+
 public class FencingClientApp extends Application {
 
-    private static final String ROOM_ID = "room-001";
-    private static final String PLAYER_ID = "p1";
-
-
+    // 고정이었던 ROOM_ID, PLAYER_ID 제거
+    private String roomName;
+    private String nickname;
+    private String playerId;   // 서버에서 "p1" 또는 "p2"로 assign
 
     private Canvas canvas;
     private GraphicsContext g;
@@ -43,8 +45,35 @@ public class FencingClientApp extends Application {
     private final ObjectMapper mapper = new ObjectMapper();
 
     private ChatPanel chatPanel;
+
     @Override
     public void start(Stage stage) {
+        // 1) 방 이름 입력
+        TextInputDialog roomDialog = new TextInputDialog("room-001");
+        roomDialog.setTitle("Room");
+        roomDialog.setHeaderText("Enter Room Name");
+        roomDialog.setContentText("Room:");
+        this.roomName = roomDialog.showAndWait().orElse("").trim();
+
+        if (roomName.isEmpty()) {
+            System.out.println("Room name is required. Closing.");
+            Platform.exit();
+            return;
+        }
+
+        // 2) 닉네임 입력
+        TextInputDialog nickDialog = new TextInputDialog("Player");
+        nickDialog.setTitle("Nickname");
+        nickDialog.setHeaderText("Enter Nickname");
+        nickDialog.setContentText("Nickname:");
+        this.nickname = nickDialog.showAndWait().orElse("").trim();
+
+        if (nickname.isEmpty()) {
+            System.out.println("Nickname is required. Closing.");
+            Platform.exit();
+            return;
+        }
+
         canvas = new Canvas(900, 500);
         g = canvas.getGraphicsContext2D();
 
@@ -57,7 +86,7 @@ public class FencingClientApp extends Application {
 
         Scene scene = new Scene(root);
 
-        stage.setTitle("ÉPÉE Client (" + PLAYER_ID + ")");
+        stage.setTitle("ÉPÉE Client - " + nickname + " (Connecting...)");
         stage.setScene(scene);
         stage.show();
 
@@ -73,7 +102,7 @@ public class FencingClientApp extends Application {
             pressedKeys.remove(e.getCode());
         });
 
-        // WebSocket 연결 (순수 Java 서버 → 경로 없이 포트만)
+        // WebSocket 연결
         try {
             wsClient = new GameWebSocketClient(new URI("ws://localhost:8080"));
             wsClient.connect();
@@ -100,21 +129,33 @@ public class FencingClientApp extends Application {
         };
         loop.start();
     }
-    public void sendChat(String text) {
-    if (text == null || text.isBlank()) return;
 
-    sendMsg(new Msg(
-            "chat",
-            ROOM_ID,
-            PLAYER_ID,
-            x,
-            y,
-            facingRight,
-            text
-    ));
-}
+    // 채팅 전송: 닉네임까지 붙여서 서버에 보냄
+    public void sendChat(String text) {
+        if (text == null || text.isBlank()) return;
+
+        if (roomName == null || playerId == null) {
+            chatPanel.appendMessage("[시스템] 아직 방에 완전히 입장하지 않았습니다.");
+            return;
+        }
+
+        sendMsg(new Msg(
+                "chat",
+                roomName,
+                playerId,
+                x,
+                y,
+                facingRight,
+                nickname + ": " + text
+        ));
+    }
 
     private void update(double dt) {
+        // 아직 서버에서 p1/p2 배정 안 받았으면 움직임만 로컬로 그리고, 서버에는 안 보냄
+        if (roomName == null || playerId == null) {
+            return;
+        }
+
         double speed = 280; // px/s
 
         if (pressedKeys.contains(javafx.scene.input.KeyCode.A)) {
@@ -139,10 +180,12 @@ public class FencingClientApp extends Application {
         // 공격 입력
         if (pressedKeys.contains(javafx.scene.input.KeyCode.F) && !attacking) {
             attacking = true;
-        sendMsg(new Msg("attack", ROOM_ID, PLAYER_ID, x, y, facingRight, null));        }
+            sendMsg(new Msg("attack", roomName, playerId, x, y, facingRight, null));
+        }
 
-        // 위치 동기화 (간단히 매 프레임 전송)
-        sendMsg(new Msg("move", ROOM_ID, PLAYER_ID, x, y, facingRight, null));    }
+        // 위치 동기화
+        sendMsg(new Msg("move", roomName, playerId, x, y, facingRight, null));
+    }
 
     private void render() {
         g.setFill(Color.DARKSLATEGRAY);
@@ -226,38 +269,90 @@ public class FencingClientApp extends Application {
         @Override
         public void onOpen(ServerHandshake handshakedata) {
             System.out.println("Connected to server");
+            // 접속하자마자 join 메시지 보냄
+            Platform.runLater(() -> chatPanel.appendMessage("[시스템] 서버에 연결되었습니다. 방에 참가 중..."));
+            sendJoin();
+        }
+
+        private void sendJoin() {
+            try {
+                Msg joinMsg = new Msg(
+                        "join",
+                        roomName,
+                        nickname,    // 여기서는 playerId 대신 nickname을 잠깐 사용
+                        x,
+                        y,
+                        facingRight,
+                        null
+                );
+                String json = mapper.writeValueAsString(joinMsg);
+                this.send(json);
+            } catch (JsonProcessingException e) {
+                e.printStackTrace();
+            }
         }
 
         @Override
         public void onMessage(String message) {
             try {
-                Map<String, String> map = mapper.readValue(message, Map.class);
+                // type이 있는 메시지인지 먼저 시도 (chat, assign 등)
+                Map<String, Object> map = mapper.readValue(message, Map.class);
+                Object typeObj = map.get("type");
 
-                if ("chat".equals(map.get("type"))) {
-                    String text = map.get("text");
+                if (typeObj != null) {
+                    String type = typeObj.toString();
 
-                    Platform.runLater(() -> {
-                        chatPanel.appendMessage(text);
-                    });
+                    if ("chat".equals(type)) {
+                        String text = (String) map.get("text");
+                        Platform.runLater(() -> chatPanel.appendMessage(text));
+                        return;
+                    }
+
+                    if ("assign".equals(type)) {
+                        String assignedId = (String) map.get("playerId");
+                        playerId = assignedId;
+
+                        Platform.runLater(() -> {
+                            chatPanel.appendMessage("[시스템] 당신은 " + playerId + " 로 배정되었습니다.");
+                        });
+                        return;
+                    }
+
+                    if ("error".equals(type)) {
+                        String msg = (String) map.get("msg");
+                        Platform.runLater(() -> {
+                            chatPanel.appendMessage("[에러] " + msg);
+                        });
+                        return;
+                    }
+
+                    // type은 있는데 우리가 따로 처리 안 하는 경우 → 무시하거나 로그
                     return;
                 }
 
-                // 그 외는 게임 상태 업데이트
+                // type이 없으면 GameState로 처리 시도
                 onServerState(message);
 
             } catch (Exception e) {
-                e.printStackTrace();
+                // Map 파싱이 실패하면 GameState일 수 있으니 한 번 더 시도
+                try {
+                    onServerState(message);
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
             }
         }
 
         @Override
         public void onClose(int code, String reason, boolean remote) {
             System.out.println("Disconnected from server: " + reason);
+            Platform.runLater(() -> chatPanel.appendMessage("[시스템] 서버와의 연결이 종료되었습니다."));
         }
 
         @Override
         public void onError(Exception ex) {
             ex.printStackTrace();
+            Platform.runLater(() -> chatPanel.appendMessage("[에러] " + ex.getMessage()));
         }
     }
 }
@@ -267,7 +362,7 @@ public class FencingClientApp extends Application {
 record Msg(
         String type,
         String room,
-        String playerId,
+        String playerId,      // join 때는 nickname, 이후에는 "p1"/"p2"
         double x,
         double y,
         boolean facingRight,
