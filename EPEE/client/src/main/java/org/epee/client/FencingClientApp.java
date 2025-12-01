@@ -28,7 +28,11 @@ public class FencingClientApp extends Application {
     // 고정이었던 ROOM_ID, PLAYER_ID 제거
     private String roomName;
     private String nickname;
-    private String playerId;   // 서버에서 "p1" 또는 "p2"로 assign
+    private String playerId; // 서버에서 "p1" 또는 "p2"로 assign
+
+    public String getPlayerId() {
+        return playerId;
+    }
 
     private Canvas canvas;
     private GraphicsContext g;
@@ -132,10 +136,11 @@ public class FencingClientApp extends Application {
 
     // 채팅 전송: 닉네임까지 붙여서 서버에 보냄
     public void sendChat(String text) {
-        if (text == null || text.isBlank()) return;
+        if (text == null || text.isBlank())
+            return;
 
         if (roomName == null || playerId == null) {
-            chatPanel.appendMessage("[시스템] 아직 방에 완전히 입장하지 않았습니다.");
+            chatPanel.appendMessage("System", "[시스템] 아직 방에 완전히 입장하지 않았습니다.");
             return;
         }
 
@@ -146,8 +151,7 @@ public class FencingClientApp extends Application {
                 x,
                 y,
                 facingRight,
-                nickname + ": " + text
-        ));
+                text));
     }
 
     private void update(double dt) {
@@ -208,7 +212,8 @@ public class FencingClientApp extends Application {
     }
 
     private void drawPlayer(Player p, Color color) {
-        if (p == null) return;
+        if (p == null)
+            return;
 
         double w = 30;
         double h = 50;
@@ -231,7 +236,8 @@ public class FencingClientApp extends Application {
     }
 
     private void sendMsg(Msg msg) {
-        if (wsClient == null || !wsClient.isOpen()) return;
+        if (wsClient == null || !wsClient.isOpen())
+            return;
         try {
             String json = mapper.writeValueAsString(msg);
             wsClient.send(json);
@@ -243,7 +249,9 @@ public class FencingClientApp extends Application {
     private void onServerState(String json) {
         try {
             GameState state = mapper.readValue(json, GameState.class);
-            Platform.runLater(() -> latestState = state);
+            Platform.runLater(() -> {
+                latestState = state;
+            });
         } catch (JsonProcessingException e) {
             e.printStackTrace();
         }
@@ -270,7 +278,7 @@ public class FencingClientApp extends Application {
         public void onOpen(ServerHandshake handshakedata) {
             System.out.println("Connected to server");
             // 접속하자마자 join 메시지 보냄
-            Platform.runLater(() -> chatPanel.appendMessage("[시스템] 서버에 연결되었습니다. 방에 참가 중..."));
+            Platform.runLater(() -> chatPanel.appendMessage("System", "[System] 서버에 연결되었습니다. 방에 참가 중..."));
             sendJoin();
         }
 
@@ -279,12 +287,11 @@ public class FencingClientApp extends Application {
                 Msg joinMsg = new Msg(
                         "join",
                         roomName,
-                        nickname,    // 여기서는 playerId 대신 nickname을 잠깐 사용
+                        nickname, // 여기서는 playerId 대신 nickname을 잠깐 사용
                         x,
                         y,
                         facingRight,
-                        null
-                );
+                        null);
                 String json = mapper.writeValueAsString(joinMsg);
                 this.send(json);
             } catch (JsonProcessingException e) {
@@ -304,37 +311,37 @@ public class FencingClientApp extends Application {
 
                     if ("chat".equals(type)) {
                         String text = (String) map.get("text");
-                        Platform.runLater(() -> chatPanel.appendMessage(text));
+                        String senderId = (String) map.get("senderId");
+                        Platform.runLater(() -> chatPanel.appendMessage(senderId, text));
                         return;
                     }
 
                     if ("assign".equals(type)) {
-    String assignedId = (String) map.get("playerId");
-    playerId = assignedId;
+                        String assignedId = (String) map.get("playerId");
+                        playerId = assignedId;
 
-    Platform.runLater(() -> {
-        // ★ 서버가 배정한 p1/p2에 맞춰 초기 스폰 위치 설정
-        if ("p1".equals(playerId)) {
-            x = 100;
-            y = 300;
-            facingRight = true;
-        } else if ("p2".equals(playerId)) {
-            x = 700;
-            y = 300;
-            facingRight = false;
-        }
+                        Platform.runLater(() -> {
+                            // ★ 서버가 배정한 p1/p2에 맞춰 초기 스폰 위치 설정
+                            if ("p1".equals(playerId)) {
+                                x = 100;
+                                y = 300;
+                                facingRight = true;
+                            } else if ("p2".equals(playerId)) {
+                                x = 700;
+                                y = 300;
+                                facingRight = false;
+                            }
 
-        chatPanel.appendMessage("[시스템] 당신은 " + playerId + " 로 배정되었습니다.");
-    });
+                            chatPanel.appendMessage("System", "[System] 당신은 " + playerId + " 로 배정되었습니다.");
+                        });
 
-    return;
-}
-
+                        return;
+                    }
 
                     if ("error".equals(type)) {
                         String msg = (String) map.get("msg");
                         Platform.runLater(() -> {
-                            chatPanel.appendMessage("[에러] " + msg);
+                            chatPanel.appendMessage("System", "[Error] " + msg);
                         });
                         return;
                     }
@@ -359,13 +366,13 @@ public class FencingClientApp extends Application {
         @Override
         public void onClose(int code, String reason, boolean remote) {
             System.out.println("Disconnected from server: " + reason);
-            Platform.runLater(() -> chatPanel.appendMessage("[시스템] 서버와의 연결이 종료되었습니다."));
+            Platform.runLater(() -> chatPanel.appendMessage("System", "[System] 서버와의 연결이 종료되었습니다."));
         }
 
         @Override
         public void onError(Exception ex) {
             ex.printStackTrace();
-            Platform.runLater(() -> chatPanel.appendMessage("[에러] " + ex.getMessage()));
+            Platform.runLater(() -> chatPanel.appendMessage("System", "[Error] " + ex.getMessage()));
         }
     }
 }
@@ -375,25 +382,25 @@ public class FencingClientApp extends Application {
 record Msg(
         String type,
         String room,
-        String playerId,      // join 때는 nickname, 이후에는 "p1"/"p2"
+        String playerId, // join 때는 nickname, 이후에는 "p1"/"p2"
         double x,
         double y,
         boolean facingRight,
-        String chat
-) {}
+        String chat) {
+}
 
 record Player(
         String id,
         double x,
         double y,
         boolean facingRight,
-        boolean attacking
-) {}
+        boolean attacking) {
+}
 
 record GameState(
         String room,
         Player p1,
         Player p2,
         int score1,
-        int score2
-) {}
+        int score2) {
+}

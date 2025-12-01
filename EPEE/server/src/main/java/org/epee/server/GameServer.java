@@ -49,24 +49,51 @@ public class GameServer extends WebSocketServer {
                 case "join" -> handleJoin(conn, msg);
                 case "move" -> {
                     GameState current = states.get(msg.room());
-                    if (current == null) return;
+                    if (current == null)
+                        return;
                     GameState updated = applyMove(current, msg);
                     states.put(msg.room(), updated);
                     broadcastState(msg.room());
                 }
                 case "attack" -> {
                     GameState current = states.get(msg.room());
-                    if (current == null) return;
+                    if (current == null)
+                        return;
+
+                    int oldScore1 = current.score1();
+                    int oldScore2 = current.score2();
+
                     GameState updated = applyAttack(current, msg);
                     states.put(msg.room(), updated);
                     broadcastState(msg.room());
-                }
-                case "chat" -> {
-                    // chat 필드는 이미 "닉네임: 내용" 형태로 들어온다고 가정하고 그대로 전달
+
+                    int newScore1 = updated.score1();
+                    int newScore2 = updated.score2();
+
+                    // 점수 변화 확인
+                    boolean scoreChanged = (newScore1 > oldScore1) || (newScore2 > oldScore2);
+
+                    String text;
+                    if (scoreChanged) { // 공격 성공
+                        text = "[System] " + msg.playerId() + " +1 점 획득!";
+                    } else { // 공격 실패
+                        text = "[System] " + msg.playerId() + "가 공격을 시도했습니다.";
+                    }
+
+                    // 메시지 브로드캐스트
                     Map<String, String> chatMsg = Map.of(
                             "type", "chat",
-                            "text", msg.chat()
-                    );
+                            "senderId", "System",
+                            "text", text);
+                    broadcastChat(msg.room(), chatMsg);
+                }
+                case "chat" -> {
+                    // chat 필드는 "닉네임: 내용" 형태일 수 있음.
+                    // senderId는 msg.playerId() 사용 (p1 or p2)
+                    Map<String, String> chatMsg = Map.of(
+                            "type", "chat",
+                            "senderId", msg.playerId() == null ? "Unknown" : msg.playerId(),
+                            "text", msg.chat());
                     broadcastChat(msg.room(), chatMsg);
                 }
                 default -> System.out.println("Unknown message type: " + msg.type());
@@ -77,77 +104,82 @@ public class GameServer extends WebSocketServer {
     }
 
     private void handleJoin(WebSocket conn, Msg msg) {
-    String roomId = msg.room();
-    String nickname = msg.playerId(); // join 시에는 nickname이 들어옴
+        String roomId = msg.room();
+        String nickname = msg.playerId(); // join 시에는 nickname이 들어옴
 
-    // 소켓을 room에 넣음
-    Set<WebSocket> conns = rooms.computeIfAbsent(roomId, k -> ConcurrentHashMap.newKeySet());
-    conns.add(conn);
+        // 소켓을 room에 넣음
+        Set<WebSocket> conns = rooms.computeIfAbsent(roomId, k -> ConcurrentHashMap.newKeySet());
+        conns.add(conn);
 
-    // 현재 접속자 수 기준으로 p1/p2 배정
-    String assignedId;
-    double spawnX, spawnY;
-    boolean facingRight;
+        // 현재 접속자 수 기준으로 p1/p2 배정
+        String assignedId;
+        double spawnX, spawnY;
+        boolean facingRight;
 
-    int count = conns.size();
+        int count = conns.size();
 
-    if (count == 1) {
-        assignedId = "p1";
-        spawnX = 100;  // 왼쪽
-        spawnY = 300;
-        facingRight = true;
+        if (count == 1) {
+            assignedId = "p1";
+            spawnX = 100; // 왼쪽
+            spawnY = 300;
+            facingRight = true;
 
-    } else if (count == 2) {
-        assignedId = "p2";
-        spawnX = 700;  // 오른쪽
-        spawnY = 300;
-        facingRight = false;
+        } else if (count == 2) {
+            assignedId = "p2";
+            spawnX = 700; // 오른쪽
+            spawnY = 300;
+            facingRight = false;
 
-    } else {
-        // 이미 방이 가득 찼으면
-        sendSimple(conn, "error", "Room full (only 2 players allowed)");
-        return;
-    }
+        } else {
+            // 이미 방이 가득 찼으면
+            sendSimple(conn, "error", "Room full (only 2 players allowed)");
+            return;
+        }
 
-    // GameState가 없다면 생성
-    GameState st = states.get(roomId);
-    if (st == null) {
-        Player initP1 = assignedId.equals("p1") ? new Player("p1", spawnX, spawnY, facingRight, false) : null;
-        Player initP2 = assignedId.equals("p2") ? new Player("p2", spawnX, spawnY, facingRight, false) : null;
-        st = new GameState(roomId, initP1, initP2, 0, 0);
+        // GameState가 없다면 생성
+        GameState st = states.get(roomId);
+        if (st == null) {
+            Player initP1 = assignedId.equals("p1") ? new Player("p1", spawnX, spawnY, facingRight, false) : null;
+            Player initP2 = assignedId.equals("p2") ? new Player("p2", spawnX, spawnY, facingRight, false) : null;
+            st = new GameState(roomId, initP1, initP2, 0, 0);
+            states.put(roomId, st);
+        }
+
+        // 기존 상태 업데이트
+        Player newPlayer = new Player(assignedId, spawnX, spawnY, facingRight, false);
+
+        Player p1 = st.p1();
+        Player p2 = st.p2();
+
+        if (assignedId.equals("p1")) {
+            st = new GameState(roomId, newPlayer, p2, st.score1(), st.score2());
+        } else {
+            st = new GameState(roomId, p1, newPlayer, st.score1(), st.score2());
+        }
+
         states.put(roomId, st);
+
+        // 배정된 ID 클라이언트에게 전달
+        sendSimple(conn, "assign", Map.of("playerId", assignedId));
+
+        // 전체에게 현재 상태 전달
+        broadcastState(roomId);
+
+        System.out.println("[" + roomId + "] " + nickname + " joined as " + assignedId);
+
+        // 입장 메시지 브로드캐스트
+        Map<String, String> chatMsg = Map.of(
+                "type", "chat",
+                "senderId", "System",
+                "text", "[System] " + assignedId + " 가 방을 입장했습니다.");
+        broadcastChat(roomId, chatMsg);
     }
-
-    // 기존 상태 업데이트
-    Player newPlayer = new Player(assignedId, spawnX, spawnY, facingRight, false);
-
-    Player p1 = st.p1();
-    Player p2 = st.p2();
-
-    if (assignedId.equals("p1")) {
-        st = new GameState(roomId, newPlayer, p2, st.score1(), st.score2());
-    } else {
-        st = new GameState(roomId, p1, newPlayer, st.score1(), st.score2());
-    }
-
-    states.put(roomId, st);
-
-    // 배정된 ID 클라이언트에게 전달
-    sendSimple(conn, "assign", Map.of("playerId", assignedId));
-
-    // 전체에게 현재 상태 전달
-    broadcastState(roomId);
-
-    System.out.println("[" + roomId + "] " + nickname + " joined as " + assignedId);
-}
-
 
     private void sendSimple(WebSocket conn, String type, String msg) {
         try {
             String json = mapper.writeValueAsString(Map.of(
                     "type", type,
-                    "msg", msg
-            ));
+                    "msg", msg));
             conn.send(json);
         } catch (Exception e) {
             e.printStackTrace();
@@ -222,7 +254,8 @@ public class GameServer extends WebSocketServer {
 
     private void broadcastState(String roomId) {
         GameState state = states.get(roomId);
-        if (state == null) return;
+        if (state == null)
+            return;
 
         try {
             String json = mapper.writeValueAsString(state);
@@ -251,27 +284,27 @@ public class GameServer extends WebSocketServer {
 /** ==== 서버측 record 정의 ==== */
 
 record Msg(
-        String type,        // "join", "move", "attack", "chat"
-        String room,        // 예: "room-001"
-        String playerId,    // join 시: nickname, 이후: "p1" / "p2"
+        String type, // "join", "move", "attack", "chat"
+        String room, // 예: "room-001"
+        String playerId, // join 시: nickname, 이후: "p1" / "p2"
         double x,
         double y,
         boolean facingRight,
-        String chat
-) {}
+        String chat) {
+}
 
 record Player(
         String id,
         double x,
         double y,
         boolean facingRight,
-        boolean attacking
-) {}
+        boolean attacking) {
+}
 
 record GameState(
         String room,
         Player p1,
         Player p2,
         int score1,
-        int score2
-) {}
+        int score2) {
+}
