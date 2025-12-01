@@ -1,0 +1,131 @@
+/* Main Background */
+.root {
+    -fx-background-color: #1a1a1a;
+    -fx-font-family: 'Segoe UI', sans-serif;
+}
+
+/* Header Title */
+.title-label {
+    -fx-font-size: 48px;
+    -fx-text-fill: white;
+    -fx-font-family: 'Serif';
+}
+
+.subtitle-label {
+    -fx-font-size: 14px;
+    -fx-text-fill: #d4af37;
+}
+
+/* Panel Container */
+.panel-box {
+    -fx-background-color: #0f172a;
+    -fx-padding: 30;
+    -fx-background-radius: 5;
+    -fx-border-color: #1e293b;
+    -fx-border-width: 1;
+}
+
+/* Labels */
+.input-label {
+    -fx-text-fill: #e2e8f0;
+    -fx-font-size: 14px;
+}
+
+.section-header {
+    -fx-text-fill: #d4af37;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+}
+
+/* Text Fields */
+.text-field {
+    -fx-background-color: #1e293b;
+    -fx-text-fill: white;
+    -fx-prompt-text-fill: #64748b;
+    -fx-background-radius: 3;
+    -fx-padding: 10;
+    -fx-border-color: #334155;
+    -fx-border-width: 1;
+}
+
+.text-field:focused {
+    -fx-border-color: #d4af37;
+}
+
+/* Buttons */
+.button {
+    -fx-cursor: hand;
+    -fx-font-size: 14px;
+    -fx-padding: 10 20;
+    -fx-background-radius: 3;
+}
+
+.create-room-btn {
+    -fx-background-color: #1e293b;
+    -fx-text-fill: white;
+    -fx-border-color: white;
+    -fx-border-width: 1;
+}
+
+.create-room-btn:hover {
+    -fx-background-color: #334155;
+}
+
+.join-room-btn {
+    -fx-background-color: #d4af37;
+    -fx-text-fill: #1a1a1a;
+    -fx-font-weight: bold;
+}
+
+.join-room-btn:hover {
+    -fx-background-color: #eab308;
+}
+
+/* Status Indicators */
+.status-online {
+    -fx-text-fill: #22c55e;
+}
+
+/* Stats Box */
+.stat-box {
+    -fx-background-color: #1e293b;
+    -fx-padding: 15;
+    -fx-background-radius: 3;
+    -fx-alignment: center;
+}
+
+.stat-value {
+    -fx-text-fill: #d4af37;
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+}
+
+.stat-label {
+    -fx-text-fill: #94a3b8;
+    -fx-font-size: 12px;
+}
+
+/* [USER 요청] 조작법 리스트 (W, S, F...) 스타일 */
+/* Key Guide */
+.key-row {
+    -fx-padding: 5 0;
+}
+
+.key-box {
+    -fx-background-color: #334155;
+    -fx-text-fill: #e2e8f0;
+    -fx-padding: 5 12;
+    -fx-background-radius: 3;
+    -fx-font-size: 12px;
+    -fx-min-width: 24px;
+    -fx-alignment: center;
+}
+
+.status-offline {
+    -fx-text-fill: #ef4444;
+}
+
+.action-label {
+    -fx-text-fill: #e2e8f0;
+    -fx-font-size: 14px;
+}

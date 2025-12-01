@@ -24,6 +24,11 @@ public class GameServer extends WebSocketServer {
     // roomId -> GameState
     private final Map<String, GameState> states = new ConcurrentHashMap<>();
 
+    // WebSocket -> RoomId
+    private final Map<WebSocket, String> connToRoom = new ConcurrentHashMap<>();
+    // WebSocket -> PlayerId ("p1" or "p2")
+    private final Map<WebSocket, String> connToPlayerId = new ConcurrentHashMap<>();
+
     public GameServer(int port) {
         super(new InetSocketAddress(port));
     }
@@ -36,8 +41,46 @@ public class GameServer extends WebSocketServer {
     @Override
     public void onClose(WebSocket conn, int code, String reason, boolean remote) {
         System.out.println("Client disconnected: " + conn.getRemoteSocketAddress());
-        // 모든 룸에서 제거
-        rooms.values().forEach(set -> set.remove(conn));
+
+        String roomId = connToRoom.remove(conn);
+        String playerId = connToPlayerId.remove(conn);
+
+        if (roomId != null) {
+            Set<WebSocket> set = rooms.get(roomId);
+            if (set != null) {
+                set.remove(conn);
+                if (set.isEmpty()) {
+                    rooms.remove(roomId);
+                    states.remove(roomId);
+                } else {
+                    // 방에 사람이 남아있으면 상태 업데이트 및 알림
+                    if (playerId != null) {
+                        // 1. 채팅 알림
+                        Map<String, String> chatMsg = Map.of(
+                                "type", "chat",
+                                "senderId", "System",
+                                "text", "[System] " + playerId + " 님이 나갔습니다.");
+                        broadcastChat(roomId, chatMsg);
+
+                        // 2. GameState 업데이트 (캐릭터 제거)
+                        GameState current = states.get(roomId);
+                        if (current != null) {
+                            Player p1 = current.p1();
+                            Player p2 = current.p2();
+
+                            if ("p1".equals(playerId))
+                                p1 = null;
+                            if ("p2".equals(playerId))
+                                p2 = null;
+
+                            GameState updated = new GameState(roomId, p1, p2, current.score1(), current.score2());
+                            states.put(roomId, updated);
+                            broadcastState(roomId);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     @Override
@@ -173,6 +216,10 @@ public class GameServer extends WebSocketServer {
                 "senderId", "System",
                 "text", "[System] " + assignedId + " 가 방을 입장했습니다.");
         broadcastChat(roomId, chatMsg);
+
+        // 연결 추적 맵 업데이트
+        connToRoom.put(conn, roomId);
+        connToPlayerId.put(conn, assignedId);
     }
 
     private void sendSimple(WebSocket conn, String type, String msg) {

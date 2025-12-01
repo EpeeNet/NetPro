@@ -18,17 +18,17 @@ import javafx.application.Platform;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
-import javafx.scene.control.TextInputDialog;
+
 import javafx.scene.layout.BorderPane;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 
 public class FencingClientApp extends Application {
 
-    // 고정이었던 ROOM_ID, PLAYER_ID 제거
+    // 고정 ROOM_ID, PLAYER_ID 제거 (동적 할당)
     private String roomName;
     private String nickname;
-    private String playerId; // 서버에서 "p1" 또는 "p2"로 assign
+    private String playerId; // 서버에서 "p1" 또는 "p2" 할당 받음
 
     public String getPlayerId() {
         return playerId;
@@ -50,54 +50,49 @@ public class FencingClientApp extends Application {
 
     private ChatPanel chatPanel;
 
+    private Stage primaryStage;
+
     @Override
     public void start(Stage stage) {
-        // 1) 방 이름 입력
-        TextInputDialog roomDialog = new TextInputDialog("room-001");
-        roomDialog.setTitle("Room");
-        roomDialog.setHeaderText("Enter Room Name");
-        roomDialog.setContentText("Room:");
-        this.roomName = roomDialog.showAndWait().orElse("").trim();
+        this.primaryStage = stage;
+        new LoginScreen(stage, this::startGame).show();
+    }
 
-        if (roomName.isEmpty()) {
-            System.out.println("Room name is required. Closing.");
-            Platform.exit();
-            return;
-        }
+    private void startGame(String nickname, String roomName) {
+        this.nickname = nickname;
+        this.roomName = roomName;
 
-        // 2) 닉네임 입력
-        TextInputDialog nickDialog = new TextInputDialog("Player");
-        nickDialog.setTitle("Nickname");
-        nickDialog.setHeaderText("Enter Nickname");
-        nickDialog.setContentText("Nickname:");
-        this.nickname = nickDialog.showAndWait().orElse("").trim();
+        if (nickname.isEmpty())
+            return; // 간단한 유효성 검사
 
-        if (nickname.isEmpty()) {
-            System.out.println("Nickname is required. Closing.");
-            Platform.exit();
-            return;
-        }
-
-        canvas = new Canvas(900, 500);
+        // 캔버스 크기를 컨테이너에 맞춤 (논리적 크기는 고정)
+        canvas = new Canvas();
         g = canvas.getGraphicsContext2D();
 
-        BorderPane root = new BorderPane(canvas);
-        root.setCenter(canvas);
+        // 캔버스를 StackPane으로 감싸서 중앙 정렬 및 리사이징 지원
+        javafx.scene.layout.StackPane canvasContainer = new javafx.scene.layout.StackPane(canvas);
+        canvasContainer.setStyle("-fx-background-color: #2F4F4F;"); // 배경색: Dark Slate Gray
+
+        // 캔버스 크기를 컨테이너 크기에 바인딩
+        canvas.widthProperty().bind(canvasContainer.widthProperty());
+        canvas.heightProperty().bind(canvasContainer.heightProperty());
+
+        BorderPane root = new BorderPane();
+        root.setCenter(canvasContainer);
 
         // ChatPanel 추가
         chatPanel = new ChatPanel(this);
         root.setRight(chatPanel.getView());
 
-        Scene scene = new Scene(root);
+        Scene scene = new Scene(root, 1000, 500); // 게임 화면 크기 확대
 
-        stage.setTitle("ÉPÉE Client - " + nickname + " (Connecting...)");
-        stage.setScene(scene);
-        stage.show();
+        primaryStage.setTitle("ÉPÉE Client - " + nickname);
+        primaryStage.setScene(scene);
 
         scene.setOnMouseClicked(e -> canvas.requestFocus());
-        canvas.requestFocus(); // 최초 실행 시 포커스 부여
+        canvas.requestFocus(); // 게임 시작 시 포커스 요청
 
-        // 키 입력 처리
+        // 키보드 입력 처리
         scene.setOnKeyPressed(e -> pressedKeys.add(e.getCode()));
         scene.setOnKeyReleased(e -> {
             if (e.getCode() == javafx.scene.input.KeyCode.F) {
@@ -106,7 +101,7 @@ public class FencingClientApp extends Application {
             pressedKeys.remove(e.getCode());
         });
 
-        // WebSocket 연결
+        // 웹소켓 연결 시작
         try {
             wsClient = new GameWebSocketClient(new URI("ws://localhost:8080"));
             wsClient.connect();
@@ -114,7 +109,7 @@ public class FencingClientApp extends Application {
             e.printStackTrace();
         }
 
-        // 게임 루프
+        // 게임 루프 (애니메이션 타이머)
         AnimationTimer loop = new AnimationTimer() {
             long lastTime = 0;
 
@@ -134,7 +129,7 @@ public class FencingClientApp extends Application {
         loop.start();
     }
 
-    // 채팅 전송: 닉네임까지 붙여서 서버에 보냄
+    // 채팅 메시지 전송
     public void sendChat(String text) {
         if (text == null || text.isBlank())
             return;
@@ -155,7 +150,7 @@ public class FencingClientApp extends Application {
     }
 
     private void update(double dt) {
-        // 아직 서버에서 p1/p2 배정 안 받았으면 움직임만 로컬로 그리고, 서버에는 안 보냄
+        // 플레이어 ID 배정 전에는 로컬 이동만 처리
         if (roomName == null || playerId == null) {
             return;
         }
@@ -177,29 +172,59 @@ public class FencingClientApp extends Application {
             y += speed * dt;
         }
 
-        // 화면 범위 제한
+        // 캐릭터 이동 범위 제한
         x = Math.max(40, Math.min(860, x));
         y = Math.max(100, Math.min(460, y));
 
-        // 공격 입력
+        // 공격 키 입력 처리
         if (pressedKeys.contains(javafx.scene.input.KeyCode.F) && !attacking) {
             attacking = true;
             sendMsg(new Msg("attack", roomName, playerId, x, y, facingRight, null));
         }
 
-        // 위치 동기화
+        // 위치 정보 서버로 전송
         sendMsg(new Msg("move", roomName, playerId, x, y, facingRight, null));
     }
 
     private void render() {
+        double w = canvas.getWidth();
+        double h = canvas.getHeight();
+
+        // 화면 초기화
         g.setFill(Color.DARKSLATEGRAY);
-        g.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
+        g.fillRect(0, 0, w, h);
+
+        // 900x500 논리적 게임 화면을 현재 창 크기에 맞게 스케일링
+        // 화면 비율 유지하며 꽉 채우기 (Letterboxing 없이)
+        // 여기서는 비율 유지하며 중앙 정렬 방식을 사용
+
+        double logicalW = 900;
+        double logicalH = 500;
+
+        double scaleX = w / logicalW;
+        double scaleY = h / logicalH;
+
+        // 화면 잘림 없이 전체를 보여주기 위해 더 작은 스케일 사용
+        double scale = Math.min(scaleX, scaleY);
+
+        // 게임 화면 중앙 정렬
+        double offsetX = (w - logicalW * scale) / 2;
+        double offsetY = (h - logicalH * scale) / 2;
+
+        g.save();
+        g.translate(offsetX, offsetY);
+        g.scale(scale, scale);
+
+        // 게임 영역 배경 그리기 (선택 사항)
+        g.setFill(Color.DARKSLATEGRAY); // 배경색과 동일하게
+        g.fillRect(0, 0, logicalW, logicalH);
 
         if (latestState != null) {
             drawPlayer(latestState.p1(), Color.CORNFLOWERBLUE);
             drawPlayer(latestState.p2(), Color.SALMON);
 
             g.setFill(Color.WHITE);
+            // 점수 및 방 정보 텍스트 표시
             g.fillText("Room: " + latestState.room(), 20, 30);
             g.fillText("Score P1: " + latestState.score1() + "  P2: " + latestState.score2(), 20, 50);
         } else {
@@ -209,6 +234,8 @@ public class FencingClientApp extends Application {
             g.setFill(Color.GRAY);
             g.fillOval(x - 5, y - 5, 10, 10);
         }
+
+        g.restore();
     }
 
     private void drawPlayer(Player p, Color color) {
@@ -277,7 +304,7 @@ public class FencingClientApp extends Application {
         @Override
         public void onOpen(ServerHandshake handshakedata) {
             System.out.println("Connected to server");
-            // 접속하자마자 join 메시지 보냄
+            // 연결 즉시 입장 메시지 전송
             Platform.runLater(() -> chatPanel.appendMessage("System", "[System] 서버에 연결되었습니다. 방에 참가 중..."));
             sendJoin();
         }
@@ -302,7 +329,7 @@ public class FencingClientApp extends Application {
         @Override
         public void onMessage(String message) {
             try {
-                // type이 있는 메시지인지 먼저 시도 (chat, assign 등)
+                // 메시지 타입 확인 (chat, assign 등)
                 Map<String, Object> map = mapper.readValue(message, Map.class);
                 Object typeObj = map.get("type");
 
@@ -346,15 +373,15 @@ public class FencingClientApp extends Application {
                         return;
                     }
 
-                    // type은 있는데 우리가 따로 처리 안 하는 경우 → 무시하거나 로그
+                    // 처리하지 않는 타입은 무시
                     return;
                 }
 
-                // type이 없으면 GameState로 처리 시도
+                // 타입이 없으면 게임 상태 업데이트로 처리
                 onServerState(message);
 
             } catch (Exception e) {
-                // Map 파싱이 실패하면 GameState일 수 있으니 한 번 더 시도
+                // 파싱 실패 시 게임 상태 업데이트 재시도
                 try {
                     onServerState(message);
                 } catch (Exception ex) {
@@ -377,7 +404,7 @@ public class FencingClientApp extends Application {
     }
 }
 
-/** ==== 클라이언트측 record 정의 (서버와 필드 맞춰야 함) ==== */
+/** ==== 데이터 레코드 정의 (서버와 동일) ==== */
 
 record Msg(
         String type,
