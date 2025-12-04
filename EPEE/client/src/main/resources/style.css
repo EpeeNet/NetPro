@@ -129,3 +129,88 @@
     -fx-text-fill: #e2e8f0;
     -fx-font-size: 14px;
 }
+
+/* --- Waiting Room Styles --- */
+
+.waiting-room-container {
+    /* No specific container style needed if reusing root/panel concepts, 
+       but can add padding/alignment here */
+}
+
+.room-code-display {
+    -fx-font-size: 24px;
+    -fx-text-fill: #d4af37;
+    /* Gold */
+    -fx-font-family: 'Monospaced';
+    -fx-background-color: #1e293b;
+    -fx-padding: 10 20;
+    -fx-border-color: #d4af37;
+    -fx-border-width: 1;
+    -fx-min-width: 200px;
+    -fx-alignment: center;
+}
+
+.copy-btn {
+    -fx-background-color: #d4af37;
+    -fx-text-fill: #1a1a1a;
+    -fx-font-size: 24px;
+    -fx-cursor: hand;
+    -fx-padding: 0;
+    /* Padding 0 to center the icon in square */
+}
+
+.copy-btn:hover {
+    -fx-background-color: #eab308;
+}
+
+.player-list-box {
+    -fx-background-color: #1e293b;
+    /* Darker panel */
+    -fx-padding: 20;
+    -fx-background-radius: 0;
+    /* Sharp edges as per screenshot */
+}
+
+.player-role-label {
+    -fx-text-fill: #e2e8f0;
+    -fx-font-size: 14px;
+}
+
+.player-name-label {
+    -fx-text-fill: #d4af37;
+    /* Gold for host name */
+    -fx-font-size: 14px;
+}
+
+.player-count-label {
+    -fx-text-fill: #94a3b8;
+    -fx-font-size: 14px;
+}
+
+.custom-spinner {
+    -fx-progress-color: #d4af37;
+}
+
+.waiting-text {
+    -fx-text-fill: #e2e8f0;
+    -fx-font-size: 16px;
+}
+
+.share-text {
+    -fx-text-fill: #94a3b8;
+    -fx-font-size: 12px;
+}
+
+.cancel-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: #e2e8f0;
+    -fx-border-color: #475569;
+    -fx-border-width: 1;
+    -fx-padding: 10 20;
+    -fx-font-size: 14px;
+    -fx-cursor: hand;
+}
+
+.cancel-btn:hover {
+    -fx-background-color: #334155;
+}

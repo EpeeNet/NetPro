@@ -52,47 +52,85 @@ public class FencingClientApp extends Application {
 
     private Stage primaryStage;
 
+    private WaitingRoomPanel waitingRoomPanel;
+    private BorderPane root;
+    private javafx.scene.layout.StackPane canvasContainer;
+
     @Override
     public void start(Stage stage) {
         this.primaryStage = stage;
         new LoginScreen(stage, this::startGame).show();
     }
 
-    private void startGame(String nickname, String roomName) {
+    private void startGame(String nickname, String roomName, boolean isCreator) {
         this.nickname = nickname;
         this.roomName = roomName;
 
         if (nickname.isEmpty())
-            return; // 간단한 유효성 검사
+            return;
 
-        // 캔버스 크기를 컨테이너에 맞춤 (논리적 크기는 고정)
+        // 캔버스 초기화
         canvas = new Canvas();
         g = canvas.getGraphicsContext2D();
 
-        // 캔버스를 StackPane으로 감싸서 중앙 정렬 및 리사이징 지원
-        javafx.scene.layout.StackPane canvasContainer = new javafx.scene.layout.StackPane(canvas);
-        canvasContainer.setStyle("-fx-background-color: #2F4F4F;"); // 배경색: Dark Slate Gray
-
-        // 캔버스 크기를 컨테이너 크기에 바인딩
+        canvasContainer = new javafx.scene.layout.StackPane(canvas);
+        canvasContainer.setStyle("-fx-background-color: #2F4F4F;");
         canvas.widthProperty().bind(canvasContainer.widthProperty());
         canvas.heightProperty().bind(canvasContainer.heightProperty());
 
-        BorderPane root = new BorderPane();
-        root.setCenter(canvasContainer);
+        // Root Pane 설정
+        root = new BorderPane();
 
-        // ChatPanel 추가
+        // ChatPanel 초기화
         chatPanel = new ChatPanel(this);
-        root.setRight(chatPanel.getView());
+        // root.setRight(chatPanel.getView()); // 초기에는 추가하지 않음 (상태에 따라 다름)
 
-        Scene scene = new Scene(root, 1000, 500); // 게임 화면 크기 확대
+        // 화면 설정
+        double initialHeight = isCreator ? 700 : 500;
+        Scene scene = new Scene(root, 1000, initialHeight);
+        scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
 
         primaryStage.setTitle("ÉPÉE Client - " + nickname);
         primaryStage.setScene(scene);
 
-        scene.setOnMouseClicked(e -> canvas.requestFocus());
-        canvas.requestFocus(); // 게임 시작 시 포커스 요청
+        // 입력 이벤트 핸들러
+        setupInputHandlers(scene);
 
-        // 키보드 입력 처리
+        // 게임 루프 시작
+        startGameLoop();
+
+        // 웹소켓 연결
+        connectWebSocket();
+
+        // 화면 전환 로직
+        if (isCreator) {
+            // 방장: 대기방 표시 (채팅창 없음)
+            waitingRoomPanel = new WaitingRoomPanel(roomName, nickname, () -> {
+                // 취소 시 로직 (연결 끊기 및 로그인 화면 복귀 등)
+                try {
+                    stop();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                new LoginScreen(primaryStage, this::startGame).show();
+            });
+            root.setCenter(waitingRoomPanel.getView());
+            root.setRight(null);
+        } else {
+            // 참가자: 바로 게임 화면 (채팅창 있음)
+            root.setCenter(canvasContainer);
+            root.setRight(chatPanel.getView());
+            canvas.requestFocus();
+        }
+    }
+
+    private void setupInputHandlers(Scene scene) {
+        scene.setOnMouseClicked(e -> {
+            if (root.getCenter() == canvasContainer) {
+                canvas.requestFocus();
+            }
+        });
+
         scene.setOnKeyPressed(e -> pressedKeys.add(e.getCode()));
         scene.setOnKeyReleased(e -> {
             if (e.getCode() == javafx.scene.input.KeyCode.F) {
@@ -100,16 +138,9 @@ public class FencingClientApp extends Application {
             }
             pressedKeys.remove(e.getCode());
         });
+    }
 
-        // 웹소켓 연결 시작
-        try {
-            wsClient = new GameWebSocketClient(new URI("ws://localhost:8080"));
-            wsClient.connect();
-        } catch (URISyntaxException e) {
-            e.printStackTrace();
-        }
-
-        // 게임 루프 (애니메이션 타이머)
+    private void startGameLoop() {
         AnimationTimer loop = new AnimationTimer() {
             long lastTime = 0;
 
@@ -127,6 +158,15 @@ public class FencingClientApp extends Application {
             }
         };
         loop.start();
+    }
+
+    private void connectWebSocket() {
+        try {
+            wsClient = new GameWebSocketClient(new URI("ws://localhost:8080"));
+            wsClient.connect();
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+        }
     }
 
     // 채팅 메시지 전송
@@ -278,6 +318,23 @@ public class FencingClientApp extends Application {
             GameState state = mapper.readValue(json, GameState.class);
             Platform.runLater(() -> {
                 latestState = state;
+
+                // 대기방에 있고, P2가 입장했다면 게임 화면으로 전환
+                if (waitingRoomPanel != null && root.getCenter() == waitingRoomPanel.getView()) {
+                    if (state.p2() != null) {
+                        root.setCenter(canvasContainer);
+                        root.setRight(chatPanel.getView()); // 게임 시작 시 채팅창 표시
+
+                        // 게임 시작 시 창 크기를 500으로 줄임
+                        primaryStage.setHeight(500 + 28); // 28은 타이틀바 대략적 높이 보정, 혹은 Scene 크기 변경 후 sizeToScene 호출
+                        // 더 깔끔한 방법: Scene 크기 변경
+                        primaryStage.getScene().getWindow().setHeight(500 + 28); // Mac 타이틀바 고려
+                        // 또는 단순히 Scene 리사이즈가 안되므로 Stage 리사이즈
+
+                        canvas.requestFocus();
+                        chatPanel.appendMessage("System", "[System] 플레이어가 입장했습니다. 게임을 시작합니다!");
+                    }
+                }
             });
         } catch (JsonProcessingException e) {
             e.printStackTrace();

@@ -1,7 +1,5 @@
 package org.epee.client;
 
-import java.util.function.BiConsumer;
-
 import javafx.scene.Scene;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
@@ -9,9 +7,13 @@ import javafx.stage.Stage;
 public class LoginScreen {
 
     private final Stage primaryStage;
-    private final BiConsumer<String, String> onStartGame;
+    private final OnStartGame onStartGame;
 
-    public LoginScreen(Stage primaryStage, BiConsumer<String, String> onStartGame) {
+    public interface OnStartGame {
+        void onStart(String nickname, String roomName, boolean isCreator);
+    }
+
+    public LoginScreen(Stage primaryStage, OnStartGame onStartGame) {
         this.primaryStage = primaryStage;
         this.onStartGame = onStartGame;
     }
@@ -135,7 +137,7 @@ public class LoginScreen {
             String room = roomInput.getText().trim();
             if (room.isEmpty())
                 room = "room-" + (int) (Math.random() * 1000);
-            onStartGame.accept(nick, room);
+            onStartGame.onStart(nick, room, true);
         });
 
         joinBtn.setOnAction(e -> {
@@ -149,7 +151,7 @@ public class LoginScreen {
                 // Show error
                 return;
             }
-            onStartGame.accept(nick, room);
+            onStartGame.onStart(nick, room, false);
         });
 
         // 창 크기 조절 및 반응형 레이아웃 설정

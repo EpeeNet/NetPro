@@ -8,7 +8,6 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 
 public class ChatPanel {
-
     private VBox root;
     private javafx.scene.control.ScrollPane scrollPane;
     private VBox chatBox;
