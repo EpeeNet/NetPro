@@ -18,6 +18,7 @@ import javafx.application.Platform;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.input.KeyCode;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
@@ -40,10 +41,10 @@ public class FencingClientApp extends Application {
     private boolean facingRight = true;
 
     private boolean attacking = false;
-    private double attackProgress = 0.0; // 0 ~ 0.2
-    private double bladeOffset = 0.0; // 공격 시 칼 전진 거리
+    private double attackProgress = 0.0; 
+    private double bladeOffset = 0.0;     
 
-    private final Set<javafx.scene.input.KeyCode> pressedKeys = new HashSet<>();
+    private final Set<KeyCode> pressedOnce = new HashSet<>();
 
     private GameState latestState;
     private GameWebSocketClient wsClient;
@@ -75,7 +76,6 @@ public class FencingClientApp extends Application {
         canvas.heightProperty().bind(canvasContainer.heightProperty());
 
         root = new BorderPane();
-
         chatPanel = new ChatPanel(this);
 
         double initialHeight = isCreator ? 700 : 500;
@@ -108,33 +108,42 @@ public class FencingClientApp extends Application {
     }
 
     private void setupInputHandlers(Scene scene) {
+
         scene.setOnMouseClicked(e -> {
             if (root.getCenter() == canvasContainer)
                 canvas.requestFocus();
         });
 
         scene.setOnKeyPressed(e -> {
-            javafx.scene.input.KeyCode code = e.getCode();
+            KeyCode code = e.getCode();
 
-            // --- 이동: A, D 한 번 눌렀을 때 30px ---
-            if (code == javafx.scene.input.KeyCode.A) {
+            // 이미 눌린 키면 무시 (1회 입력만)
+            if (pressedOnce.contains(code))
+                return;
+
+            pressedOnce.add(code);
+
+            // === 이동 (A/D 1회당 30px) ===
+            if (code == KeyCode.A) {
                 facingRight = false;
                 x -= 30;
             }
-            if (code == javafx.scene.input.KeyCode.D) {
+            if (code == KeyCode.D) {
                 facingRight = true;
                 x += 30;
             }
 
-            // --- 공격: F ---
-            if (code == javafx.scene.input.KeyCode.F && !attacking) {
+            // === 공격 ===
+            if (code == KeyCode.F && !attacking) {
                 attacking = true;
                 attackProgress = 0.0;
+
                 sendMsg(new Msg("attack", roomName, playerId, x, y, facingRight, null));
             }
         });
 
         scene.setOnKeyReleased(e -> {
+            pressedOnce.remove(e.getCode());
         });
     }
 
@@ -188,15 +197,13 @@ public class FencingClientApp extends Application {
 
         x = Math.max(40, Math.min(860, x));
 
-        // ---- 찌르기 애니메이션 ----
+        // ---- 찌르기 애니메이션 (내 캐릭터만) ----
         if (attacking) {
             attackProgress += dt;
 
             if (attackProgress < 0.1) {
-                // 전진 0~0.1초
                 bladeOffset = (attackProgress / 0.1) * 30;
             } else if (attackProgress < 0.2) {
-                // 복귀 0.1~0.2초
                 bladeOffset = (1 - ((attackProgress - 0.1) / 0.1)) * 30;
             } else {
                 attacking = false;
@@ -204,7 +211,6 @@ public class FencingClientApp extends Application {
             }
         }
 
-        // 서버로 위치 전달
         sendMsg(new Msg("move", roomName, playerId, x, y, facingRight, null));
     }
 
@@ -248,9 +254,12 @@ public class FencingClientApp extends Application {
         g.setFill(color);
         g.fillRect(p.x() - w / 2, p.y() - h, w, h);
 
+        boolean isMe = p.id().equals(playerId);
+        double offset = isMe ? bladeOffset : 0;
+
         double tipX = p.facingRight()
-                ? p.x() + 40 + bladeOffset
-                : p.x() - 40 - bladeOffset;
+                ? p.x() + 40 + offset
+                : p.x() - 40 - offset;
 
         double tipY = p.y() - 30;
 
@@ -258,11 +267,7 @@ public class FencingClientApp extends Application {
         g.setLineWidth(3);
         g.strokeLine(p.x(), tipY, tipX, tipY);
 
-        if (p.attacking()) {
-            g.setStroke(Color.YELLOW);
-            g.setLineWidth(2);
-            g.strokeOval(tipX - 6, tipY - 6, 12, 12);
-        }
+        // 노란 원 삭제됨
     }
 
     private void sendMsg(Msg msg) {
