@@ -40,8 +40,8 @@ public class FencingClientApp extends Application {
     private boolean facingRight = true;
 
     private boolean attacking = false;
-    private double attackProgress = 0.0;   // 0 ~ 0.2
-    private double bladeOffset = 0.0;      // 공격 시 칼 전진 거리
+    private double attackProgress = 0.0; // 0 ~ 0.2
+    private double bladeOffset = 0.0; // 공격 시 칼 전진 거리
 
     private final Set<javafx.scene.input.KeyCode> pressedKeys = new HashSet<>();
 
@@ -80,6 +80,7 @@ public class FencingClientApp extends Application {
 
         double initialHeight = isCreator ? 700 : 500;
         Scene scene = new Scene(root, 1000, initialHeight);
+        scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
 
         primaryStage.setTitle("ÉPÉE Client - " + nickname);
         primaryStage.setScene(scene);
@@ -92,7 +93,9 @@ public class FencingClientApp extends Application {
             waitingRoomPanel = new WaitingRoomPanel(roomName, nickname, () -> {
                 try {
                     stop();
-                } catch (Exception e) { e.printStackTrace(); }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
                 new LoginScreen(primaryStage, this::startGame).show();
             });
 
@@ -131,7 +134,8 @@ public class FencingClientApp extends Application {
             }
         });
 
-        scene.setOnKeyReleased(e -> {});
+        scene.setOnKeyReleased(e -> {
+        });
     }
 
     private void startGameLoop() {
@@ -140,7 +144,10 @@ public class FencingClientApp extends Application {
 
             @Override
             public void handle(long now) {
-                if (lastTime == 0) { lastTime = now; return; }
+                if (lastTime == 0) {
+                    lastTime = now;
+                    return;
+                }
 
                 double dt = (now - lastTime) / 1e9;
                 lastTime = now;
@@ -162,7 +169,8 @@ public class FencingClientApp extends Application {
     }
 
     public void sendChat(String text) {
-        if (text == null || text.isBlank()) return;
+        if (text == null || text.isBlank())
+            return;
 
         sendMsg(new Msg(
                 "chat",
@@ -171,8 +179,7 @@ public class FencingClientApp extends Application {
                 x,
                 y,
                 facingRight,
-                text
-        ));
+                text));
     }
 
     private void update(double dt) {
@@ -232,13 +239,14 @@ public class FencingClientApp extends Application {
     }
 
     private void drawPlayer(Player p, Color color) {
-        if (p == null) return;
+        if (p == null)
+            return;
 
         double w = 30;
         double h = 50;
 
         g.setFill(color);
-        g.fillRect(p.x() - w/2, p.y() - h, w, h);
+        g.fillRect(p.x() - w / 2, p.y() - h, w, h);
 
         double tipX = p.facingRight()
                 ? p.x() + 40 + bladeOffset
@@ -258,7 +266,8 @@ public class FencingClientApp extends Application {
     }
 
     private void sendMsg(Msg msg) {
-        if (wsClient == null || !wsClient.isOpen()) return;
+        if (wsClient == null || !wsClient.isOpen())
+            return;
 
         try {
             wsClient.send(mapper.writeValueAsString(msg));
@@ -274,8 +283,8 @@ public class FencingClientApp extends Application {
                 latestState = state;
 
                 if (waitingRoomPanel != null &&
-                    root.getCenter() == waitingRoomPanel.getView() &&
-                    state.p2() != null) {
+                        root.getCenter() == waitingRoomPanel.getView() &&
+                        state.p2() != null) {
 
                     root.setCenter(canvasContainer);
                     root.setRight(chatPanel.getView());
@@ -294,7 +303,8 @@ public class FencingClientApp extends Application {
     @Override
     public void stop() throws Exception {
         super.stop();
-        if (wsClient != null) wsClient.close();
+        if (wsClient != null)
+            wsClient.close();
     }
 
     public static void main(String[] args) {
@@ -302,13 +312,13 @@ public class FencingClientApp extends Application {
     }
 
     private class GameWebSocketClient extends WebSocketClient {
-        public GameWebSocketClient(URI serverUri) { super(serverUri); }
+        public GameWebSocketClient(URI serverUri) {
+            super(serverUri);
+        }
 
         @Override
         public void onOpen(ServerHandshake handshakedata) {
-            Platform.runLater(() ->
-                chatPanel.appendMessage("System", "[System] 서버에 연결되었습니다. 방에 참가 중...")
-            );
+            Platform.runLater(() -> chatPanel.appendMessage("System", "[System] 서버에 연결되었습니다. 방에 참가 중..."));
             sendJoin();
         }
 
@@ -321,16 +331,17 @@ public class FencingClientApp extends Application {
                         x,
                         y,
                         facingRight,
-                        null
-                );
+                        null);
                 this.send(mapper.writeValueAsString(join));
-            } catch (Exception e) { e.printStackTrace(); }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
 
         @Override
         public void onMessage(String message) {
             try {
-                Map<String,Object> map = mapper.readValue(message, Map.class);
+                Map<String, Object> map = mapper.readValue(message, Map.class);
 
                 if (map.get("type") != null) {
                     String type = map.get("type").toString();
@@ -346,9 +357,13 @@ public class FencingClientApp extends Application {
 
                         Platform.runLater(() -> {
                             if ("p1".equals(playerId)) {
-                                x = 100; y = 300; facingRight = true;
+                                x = 100;
+                                y = 300;
+                                facingRight = true;
                             } else {
-                                x = 700; y = 300; facingRight = false;
+                                x = 700;
+                                y = 300;
+                                facingRight = false;
                             }
                             chatPanel.appendMessage("System", "[System] 당신은 " + playerId + " 입니다.");
                         });
@@ -367,27 +382,29 @@ public class FencingClientApp extends Application {
             } catch (Exception e) {
                 try {
                     onServerState(message);
-                } catch (Exception ignore) {}
+                } catch (Exception ignore) {
+                }
             }
         }
 
         @Override
         public void onClose(int code, String reason, boolean remote) {
-            Platform.runLater(() ->
-                chatPanel.appendMessage("System", "[System] 서버 연결 종료됨.")
-            );
+            Platform.runLater(() -> chatPanel.appendMessage("System", "[System] 서버 연결 종료됨."));
         }
 
         @Override
         public void onError(Exception ex) {
-            Platform.runLater(() ->
-                chatPanel.appendMessage("System", "[Error] " + ex.getMessage())
-            );
+            Platform.runLater(() -> chatPanel.appendMessage("System", "[Error] " + ex.getMessage()));
         }
     }
 }
 
 /** 데이터 구조 동일 */
-record Msg(String type, String room, String playerId, double x, double y, boolean facingRight, String chat) {}
-record Player(String id, double x, double y, boolean facingRight, boolean attacking) {}
-record GameState(String room, Player p1, Player p2, int score1, int score2) {}
+record Msg(String type, String room, String playerId, double x, double y, boolean facingRight, String chat) {
+}
+
+record Player(String id, double x, double y, boolean facingRight, boolean attacking) {
+}
+
+record GameState(String room, Player p1, Player p2, int score1, int score2) {
+}
