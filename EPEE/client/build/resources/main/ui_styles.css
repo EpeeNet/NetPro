@@ -1,0 +1,338 @@
+/* Main Background */
+.root {
+    -fx-background-color: #1A2332;
+    -fx-background-image: url("background.png");
+    -fx-background-size: cover;
+    -fx-background-position: center center;
+    -fx-font-family: 'Arial';
+}
+
+/* Scoreboard Area */
+.scoreboard-container {
+    -fx-padding: 20;
+    -fx-alignment: center;
+    -fx-spacing: 20;
+}
+
+.player-name {
+    -fx-text-fill: white;
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+}
+
+.score-box {
+    -fx-background-color: #E5C15D;
+    -fx-background-radius: 5;
+    -fx-padding: 5 15;
+    -fx-min-width: 50;
+    -fx-alignment: center;
+}
+
+.score-label {
+    -fx-text-fill: #1A2332;
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+}
+
+.vs-label {
+    -fx-text-fill: #E5C15D;
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-font-style: italic;
+}
+
+.round-info {
+    -fx-text-fill: #8899A6;
+    -fx-font-size: 14px;
+}
+
+/* Bottom Controls Bar */
+.controls-container {
+    -fx-background-color: #151C28;
+    -fx-padding: 15;
+    -fx-alignment: center;
+    -fx-spacing: 40;
+    -fx-border-color: #2D3E50;
+    -fx-border-width: 1 0 0 0;
+}
+
+.control-group {
+    -fx-alignment: center-left;
+    -fx-spacing: 10;
+}
+
+.key-box {
+    -fx-border-color: #E5C15D;
+    -fx-border-radius: 3;
+    -fx-border-width: 1;
+    -fx-padding: 2 6;
+    -fx-text-fill: white;
+    -fx-font-size: 12px;
+    -fx-font-family: 'Monospaced';
+}
+
+.action-label {
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+}
+
+.icon-arrow {
+    -fx-text-fill: #E5C15D;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
+
+/* --- Game Over Popup --- */
+
+.game-over-overlay {
+    -fx-background-color: rgba(0, 0, 0, 0.7);
+    -fx-alignment: center;
+}
+
+.game-over-window {
+    -fx-background-color: #151C28;
+    -fx-border-color: #E5C15D;
+    -fx-border-width: 2;
+    -fx-max-width: 400;
+    -fx-padding: 0;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.5), 10, 0, 0, 0);
+}
+
+.game-over-header {
+    -fx-background-color: #E5C15D;
+    -fx-padding: 20;
+    -fx-alignment: center;
+    -fx-spacing: 10;
+}
+
+.game-over-title {
+    -fx-text-fill: #1A2332;
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+}
+
+.game-over-winner {
+    -fx-text-fill: #1A2332;
+    -fx-font-size: 18px;
+}
+
+.game-over-body {
+    -fx-padding: 20;
+    -fx-spacing: 15;
+    -fx-alignment: center;
+}
+
+.stat-row {
+    -fx-background-color: #1A2332;
+    -fx-padding: 10 15;
+    -fx-spacing: 10;
+    -fx-alignment: center-left;
+    -fx-border-color: #2D3E50;
+    -fx-border-width: 1;
+}
+
+.stat-icon {
+    -fx-text-fill: #E5C15D;
+    -fx-font-size: 18px;
+}
+
+.stat-label {
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+}
+
+.stat-value {
+    -fx-text-fill: #E5C15D;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
+
+.lobby-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: white;
+    -fx-border-color: white;
+    -fx-border-width: 1;
+    -fx-font-size: 14px;
+    -fx-padding: 10 20;
+    -fx-cursor: hand;
+    -fx-min-width: 200;
+}
+
+.lobby-button:hover {
+    -fx-background-color: #2D3E50;
+}
+
+/* --- Waiting Room Styles --- */
+
+.waiting-room-container {
+    -fx-background-color: #151C28;
+    -fx-background-radius: 10;
+    -fx-padding: 30;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.3), 10, 0, 0, 5);
+}
+
+.title-label {
+    -fx-text-fill: #E5C15D;
+    -fx-font-size: 32px;
+    -fx-font-weight: bold;
+    -fx-font-family: 'Arial';
+}
+
+.subtitle-label {
+    -fx-text-fill: #94a3b8;
+    -fx-font-size: 16px;
+}
+
+.input-label {
+    -fx-text-fill: #e2e8f0;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
+
+.room-code-display {
+    -fx-font-size: 24px;
+    -fx-text-fill: #E5C15D;
+    -fx-font-family: 'Monospaced';
+    -fx-background-color: #151C28;
+    -fx-padding: 10 20;
+    -fx-border-color: #E5C15D;
+    -fx-border-width: 1;
+    -fx-min-width: 200px;
+    -fx-alignment: center;
+}
+
+.copy-btn {
+    -fx-background-color: #E5C15D;
+    -fx-text-fill: #1A2332;
+    -fx-font-size: 24px;
+    -fx-cursor: hand;
+    -fx-padding: 0;
+}
+
+.copy-btn:hover {
+    -fx-background-color: #eab308;
+}
+
+.player-list-box {
+    -fx-background-color: #151C28;
+    -fx-padding: 20;
+    -fx-background-radius: 0;
+}
+
+.player-role-label {
+    -fx-text-fill: #e2e8f0;
+    -fx-font-size: 14px;
+}
+
+.player-name-label {
+    -fx-text-fill: #E5C15D;
+    -fx-font-size: 14px;
+}
+
+.player-count-label {
+    -fx-text-fill: #94a3b8;
+    -fx-font-size: 14px;
+}
+
+.custom-spinner {
+    -fx-progress-color: #E5C15D;
+}
+
+.waiting-text {
+    -fx-text-fill: #e2e8f0;
+    -fx-font-size: 16px;
+}
+
+.share-text {
+    -fx-text-fill: #94a3b8;
+    -fx-font-size: 12px;
+}
+
+.cancel-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: #e2e8f0;
+    -fx-border-color: #475569;
+    -fx-border-width: 1;
+    -fx-padding: 10 20;
+    -fx-font-size: 14px;
+    -fx-cursor: hand;
+}
+
+.cancel-btn:hover {
+    -fx-background-color: #334155;
+}
+
+/* --- Chat Panel Styles --- */
+
+.chat-root {
+    -fx-background-color: #151C28;
+    -fx-border-color: #2D3E50;
+    -fx-border-width: 0 0 0 1;
+}
+
+.chat-scroll {
+    -fx-background: #151C28;
+    -fx-background-color: #151C28;
+}
+
+.chat-content {
+    -fx-background-color: #151C28;
+}
+
+.chat-input {
+    -fx-background-color: #1A2332;
+    -fx-text-fill: white;
+    -fx-prompt-text-fill: #64748b;
+    -fx-border-color: #2D3E50;
+    -fx-border-width: 1;
+}
+
+.send-btn {
+    -fx-background-color: #E5C15D;
+    -fx-text-fill: #1A2332;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+}
+
+.send-btn:hover {
+    -fx-background-color: #eab308;
+}
+
+.chat-bubble {
+    -fx-padding: 8 12;
+    -fx-background-radius: 5;
+    /* Less rounded as per image */
+    -fx-max-width: 200px;
+    -fx-font-size: 13px;
+}
+
+.chat-bubble-me {
+    -fx-background-color: #E5C15D;
+    -fx-text-fill: #1A2332;
+}
+
+.chat-bubble-other {
+    -fx-background-color: #252525;
+    /* Dark grey */
+    -fx-text-fill: white;
+    -fx-border-color: #333;
+    -fx-border-width: 1;
+}
+
+.chat-name {
+    -fx-text-fill: #E5C15D;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+.chat-time {
+    -fx-text-fill: #666;
+    -fx-font-size: 10px;
+    -fx-padding: 0 5 0 5;
+}
+
+.system-msg {
+    -fx-fill: #E5C15D;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}

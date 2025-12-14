@@ -23,6 +23,8 @@ public class GameServer extends WebSocketServer {
 
         long lastP1Update = 0;
         long lastP2Update = 0;
+        long lastScoreTime = 0;
+        long gameStartTime = 0;
     }
 
     private final Map<String, RoomState> rooms = new ConcurrentHashMap<>();
@@ -50,7 +52,12 @@ public class GameServer extends WebSocketServer {
                     r.p1 = null;
                 if ("p2".equals(pid))
                     r.p2 = null;
-                broadcastState(room);
+
+                if (r.p1 == null && r.p2 == null) {
+                    rooms.remove(room);
+                } else {
+                    broadcastState(room);
+                }
             }
         }
     }
@@ -82,12 +89,19 @@ public class GameServer extends WebSocketServer {
 
         String assigned;
 
+        // Reset scores whenever a new player joins (start of new match or session)
+        if (r.p1 == null || r.p2 == null) {
+            r.score1 = 0;
+            r.score2 = 0;
+        }
+
         if (r.p1 == null) {
             assigned = "p1";
-            r.p1 = new Player("p1", 100, 300, true, false);
+            r.p1 = new Player("p1", nickname, 100, 400, true, false);
         } else if (r.p2 == null) {
             assigned = "p2";
-            r.p2 = new Player("p2", 700, 300, false, false);
+            r.p2 = new Player("p2", nickname, 700, 400, false, false);
+            r.gameStartTime = System.currentTimeMillis(); // Start game time when P2 joins
         } else {
             sendError(conn, "Room full");
             return;
@@ -118,19 +132,28 @@ public class GameServer extends WebSocketServer {
         double y = ((Number) map.get("y")).doubleValue();
         boolean facing = (Boolean) map.get("facingRight");
 
+        // Extract attacking state, default to false if missing
+        Object attackingObj = map.get("attacking");
+        boolean attacking = attackingObj instanceof Boolean ? (Boolean) attackingObj : false;
+
         long now = System.currentTimeMillis();
 
         if ("p1".equals(pid)) {
-            r.p1 = new Player("p1", x, y, facing, false);
+            r.p1 = new Player("p1", r.p1.nickname(), x, y, facing, attacking);
             r.lastP1Update = now;
         } else {
-            r.p2 = new Player("p2", x, y, facing, false);
+            r.p2 = new Player("p2", r.p2.nickname(), x, y, facing, attacking);
             r.lastP2Update = now;
         }
 
         checkHitWithPriority(r);
         broadcastState(room);
     }
+
+    // ... (handleAttack remains similar or can be deprecated if move handles it,
+    // but keep for now)
+
+    // ...
 
     private void handleAttack(WebSocket conn, Map<String, Object> map) {
         String room = socketToRoom.get(conn);
@@ -146,10 +169,10 @@ public class GameServer extends WebSocketServer {
         long now = System.currentTimeMillis();
 
         if ("p1".equals(pid)) {
-            r.p1 = new Player(r.p1.id(), r.p1.x(), r.p1.y(), r.p1.facingRight(), true);
+            r.p1 = new Player(r.p1.id(), r.p1.nickname(), r.p1.x(), r.p1.y(), r.p1.facingRight(), true);
             r.lastP1Update = now;
         } else {
-            r.p2 = new Player(r.p2.id(), r.p2.x(), r.p2.y(), r.p2.facingRight(), true);
+            r.p2 = new Player(r.p2.id(), r.p2.nickname(), r.p2.x(), r.p2.y(), r.p2.facingRight(), true);
             r.lastP2Update = now;
         }
 
@@ -178,6 +201,9 @@ public class GameServer extends WebSocketServer {
 
     /** 공격 리치 70px 적용 (칼 전진 포함) */
     private boolean hit(Player attacker, Player defender) {
+        if (!attacker.attacking())
+            return false;
+
         double reach = 70; // === 40 + bladeOffset(최대 30)
 
         double tip = attacker.facingRight()
@@ -189,16 +215,22 @@ public class GameServer extends WebSocketServer {
     }
 
     private void onScore(RoomState r, boolean p1Scored) {
+        long now = System.currentTimeMillis();
+        if (now - r.lastScoreTime < 1000)
+            return; // Debounce: 1 second cooldown
+
+        r.lastScoreTime = now;
+
         if (p1Scored)
             r.score1++;
         else
             r.score2++;
 
-        // 즉시 리스폰
-        r.p1 = new Player("p1", 100, 300, true, false);
-        r.p2 = new Player("p2", 700, 300, false, false);
+        // 즉시 리스폰 (닉네임 유지)
+        r.p1 = new Player("p1", r.p1.nickname(), 100, 400, true, false);
+        r.p2 = new Player("p2", r.p2.nickname(), 700, 400, false, false);
 
-        r.lastP1Update = r.lastP2Update = System.currentTimeMillis();
+        r.lastP1Update = r.lastP2Update = now;
     }
 
     private void handleChat(WebSocket conn, Map<String, Object> map) {
@@ -230,6 +262,7 @@ public class GameServer extends WebSocketServer {
         data.put("p2", r.p2);
         data.put("score1", r.score1);
         data.put("score2", r.score2);
+        data.put("gameStartTime", r.gameStartTime);
 
         broadcast(room, data);
     }
@@ -262,6 +295,10 @@ public class GameServer extends WebSocketServer {
         System.out.println("Game server started");
     }
 
-    public record Player(String id, double x, double y, boolean facingRight, boolean attacking) {
+    public record Player(String id, String nickname, double x, double y, boolean facingRight, boolean attacking) {
+    }
+
+    public record Msg(String type, String room, String playerId, String nickname, double x, double y,
+            boolean facingRight, boolean attacking, String chat) {
     }
 }

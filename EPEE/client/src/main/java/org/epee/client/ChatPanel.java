@@ -6,6 +6,10 @@ import javafx.scene.control.Button;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.application.Platform;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import javafx.scene.control.Label;
 
 public class ChatPanel {
     private VBox root;
@@ -20,28 +24,29 @@ public class ChatPanel {
         root = new VBox(10);
         root.setPadding(new Insets(10));
         root.setPrefWidth(260);
-        root.setStyle("-fx-background-color: #000;");
+        root.getStyleClass().add("chat-root");
 
         // ★ 채팅창 생성 (Rich Text 지원을 위해 VBox + ScrollPane 사용)
         chatBox = new VBox(5);
-        chatBox.setStyle("-fx-background-color: #000;");
+        chatBox.getStyleClass().add("chat-content");
         chatBox.setFillWidth(true);
 
         scrollPane = new javafx.scene.control.ScrollPane(chatBox);
         scrollPane.setFitToWidth(true);
-        scrollPane.setPrefHeight(430);
-        scrollPane.setStyle("-fx-background: #000; -fx-background-color: #000;");
+        // scrollPane.setPrefHeight(430); // Removed fixed height
+        VBox.setVgrow(scrollPane, javafx.scene.layout.Priority.ALWAYS); // Fill available space
+        scrollPane.getStyleClass().add("chat-scroll");
         scrollPane.setHbarPolicy(javafx.scene.control.ScrollPane.ScrollBarPolicy.NEVER);
         scrollPane.setVbarPolicy(javafx.scene.control.ScrollPane.ScrollBarPolicy.AS_NEEDED);
 
         input = new TextField();
         input.setPromptText("메시지 입력...");
-        input.setStyle("-fx-control-inner-background: #222; -fx-text-fill: white;");
+        input.getStyleClass().add("chat-input");
 
         Button sendBtn = new Button("Send");
 
-        // ★ send 버튼 흰색
-        sendBtn.setStyle("-fx-background-color: white; -fx-text-fill: black;");
+        // ★ send 버튼 흰색 -> 테마색
+        sendBtn.getStyleClass().add("send-btn");
 
         sendBtn.setOnAction(e -> sendMessage());
         input.setOnAction(e -> sendMessage());
@@ -62,83 +67,169 @@ public class ChatPanel {
 
         app.sendChat(text);
         input.clear();
+        app.requestGameFocus(); // Return focus to game
     }
 
-    public void appendMessage(String senderId, String msg) {
-        if (senderId == null)
-            senderId = "Unknown";
+    public void addSystemMessage(String msg) {
+        appendMessage("System", "System", msg);
+    }
 
-        VBox messageContainer = new VBox(2);
-        HBox row = new HBox();
+    public void addSystemMessage(String prefix, String highlight, String suffix) {
+        Platform.runLater(() -> {
+            VBox messageContainer = new VBox(2);
+            HBox row = new HBox();
 
-        // 시스템 메시지 처리
-        if ("System".equals(senderId)) {
-            javafx.scene.text.TextFlow sysFlow = new javafx.scene.text.TextFlow();
-            sysFlow.setStyle("-fx-padding: 5; -fx-background-color: transparent;");
-            sysFlow.setTextAlignment(javafx.scene.text.TextAlignment.CENTER);
+            javafx.scene.text.TextFlow flow = new javafx.scene.text.TextFlow();
+            flow.getStyleClass().add("system-msg");
+            flow.setMaxWidth(240);
+            flow.setTextAlignment(javafx.scene.text.TextAlignment.CENTER);
 
-            // "p1", "p2"를 기준으로 토큰화
-            String[] tokens = msg.split("(?<=p1)|(?=p1)|(?<=p2)|(?=p2)");
+            javafx.scene.text.Text txtPrefix = new javafx.scene.text.Text(prefix);
+            txtPrefix.setFill(javafx.scene.paint.Color.web("#888888")); // System text color
 
-            for (String token : tokens) {
-                javafx.scene.text.Text textNode = new javafx.scene.text.Text(token);
-                if ("p1".equals(token)) {
-                    textNode.setFill(javafx.scene.paint.Color.CORNFLOWERBLUE);
-                    textNode.setStyle("-fx-font-weight: bold; -fx-font-size: 10px;");
-                } else if ("p2".equals(token)) {
-                    textNode.setFill(javafx.scene.paint.Color.SALMON);
-                    textNode.setStyle("-fx-font-weight: bold; -fx-font-size: 10px;");
-                } else {
-                    textNode.setFill(javafx.scene.paint.Color.web("#aaa"));
-                    textNode.setStyle("-fx-font-size: 10px;");
-                }
-                sysFlow.getChildren().add(textNode);
-            }
+            javafx.scene.text.Text txtHighlight = new javafx.scene.text.Text(highlight);
+            txtHighlight.setFill(getColorForNickname(highlight));
+            txtHighlight.setStyle("-fx-font-weight: bold;");
 
-            row.getChildren().add(sysFlow);
+            javafx.scene.text.Text txtSuffix = new javafx.scene.text.Text(suffix);
+            txtSuffix.setFill(javafx.scene.paint.Color.web("#888888")); // System text color
+
+            flow.getChildren().addAll(txtPrefix, txtHighlight, txtSuffix);
+
+            row.getChildren().add(flow);
             row.setAlignment(javafx.geometry.Pos.CENTER);
             chatBox.getChildren().add(row);
 
             scrollPane.layout();
             scrollPane.setVvalue(1.0);
-            return;
-        }
+        });
+    }
 
-        // 일반 채팅 (p1, p2)
-        boolean isMe = senderId.equals(app.getPlayerId());
+    private javafx.scene.paint.Color getColorForNickname(String name) {
+        int hash = name.hashCode();
+        int r = (hash & 0xFF0000) >> 16;
+        int g = (hash & 0x00FF00) >> 8;
+        int b = hash & 0x0000FF;
+        return javafx.scene.paint.Color.rgb(r, g, b).brighter(); // Ensure visibility on dark bg
+    }
 
-        // 1) 닉네임 라벨
-        javafx.scene.control.Label nameLabel = new javafx.scene.control.Label(senderId);
-        nameLabel.setStyle("-fx-text-fill: #ccc; -fx-font-size: 10px;");
+    public void appendMessage(String senderId, String senderName, String msg) {
+        final String finalSenderId = (senderId == null) ? "Unknown" : senderId;
 
-        // 2) 말풍선 (StackPane + Label/TextFlow)
-        javafx.scene.control.Label bubbleLabel = new javafx.scene.control.Label(msg);
-        bubbleLabel.setWrapText(true);
-        bubbleLabel.setMaxWidth(200);
-        bubbleLabel.setPadding(new Insets(8));
+        Platform.runLater(() -> {
+            // 시스템 메시지 처리
+            if ("System".equals(finalSenderId)) {
+                HBox row = new HBox();
+                Label sysLabel = new Label(msg);
+                sysLabel.getStyleClass().add("system-msg");
+                sysLabel.setWrapText(true);
+                sysLabel.setMaxWidth(240);
+                sysLabel.setAlignment(javafx.geometry.Pos.CENTER);
 
-        if (isMe) {
-            // 내 채팅: 오른쪽 정렬, 노란색/연두색 계열
-            bubbleLabel.setStyle("-fx-background-color: #dcf8c6; -fx-text-fill: black; -fx-background-radius: 10;");
-            messageContainer.setAlignment(javafx.geometry.Pos.CENTER_RIGHT);
-            row.setAlignment(javafx.geometry.Pos.CENTER_RIGHT);
+                row.getChildren().add(sysLabel);
+                row.setAlignment(javafx.geometry.Pos.CENTER);
+                chatBox.getChildren().add(row);
 
-            messageContainer.getChildren().addAll(nameLabel, bubbleLabel);
-        } else {
-            // 상대 채팅: 왼쪽 정렬, 흰색
-            bubbleLabel.setStyle("-fx-background-color: white; -fx-text-fill: black; -fx-background-radius: 10;");
-            messageContainer.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
-            row.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+                scrollPane.layout();
+                scrollPane.setVvalue(1.0);
+                return;
+            }
 
-            messageContainer.getChildren().addAll(nameLabel, bubbleLabel);
-        }
+            // 일반 채팅
+            boolean isMe = finalSenderId.equals(app.getPlayerId());
+            String timeStr = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"));
 
-        row.getChildren().add(messageContainer);
-        chatBox.getChildren().add(row);
+            VBox msgContainer = new VBox(2);
 
-        // 자동 스크롤
-        scrollPane.layout();
-        scrollPane.setVvalue(1.0);
+            // Name Label (Header)
+            Label nameLabel = new Label(senderName);
+            nameLabel.getStyleClass().add("chat-name");
+
+            // Time Label
+            Label timeLabel = new Label(timeStr);
+            timeLabel.getStyleClass().add("chat-time");
+            timeLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #888888; -fx-padding: 0 5 2 5;"); // Bottom padding
+                                                                                                      // alignment
+
+            // Message Bubble
+            Label msgLabel = new Label(msg);
+            msgLabel.setWrapText(true);
+            msgLabel.setMaxWidth(200);
+            msgLabel.getStyleClass().add("chat-bubble");
+
+            HBox contentRow = new HBox(5); // Gap between bubble and time
+            contentRow.setAlignment(javafx.geometry.Pos.BOTTOM_LEFT); // Default bottom alignment
+
+            if (isMe) {
+                // My message: Yellow bubble, Dark text
+                msgLabel.getStyleClass().add("chat-bubble-me");
+
+                // Layout: [Time] [Bubble] (Right Aligned)
+                contentRow.getChildren().addAll(timeLabel, msgLabel);
+                contentRow.setAlignment(javafx.geometry.Pos.BOTTOM_RIGHT);
+
+                msgContainer.getChildren().addAll(nameLabel, contentRow);
+                msgContainer.setAlignment(javafx.geometry.Pos.TOP_RIGHT);
+            } else {
+                // Other message: Dark bubble, White text
+                msgLabel.getStyleClass().add("chat-bubble-other");
+
+                // Layout: [Bubble] [Time] (Left Aligned)
+                contentRow.getChildren().addAll(msgLabel, timeLabel);
+                contentRow.setAlignment(javafx.geometry.Pos.BOTTOM_LEFT);
+
+                msgContainer.getChildren().addAll(nameLabel, contentRow);
+                msgContainer.setAlignment(javafx.geometry.Pos.TOP_LEFT);
+            }
+
+            HBox row = new HBox(msgContainer);
+            if (isMe) {
+                row.setAlignment(javafx.geometry.Pos.CENTER_RIGHT);
+            } else {
+                row.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+            }
+
+            chatBox.getChildren().add(row);
+
+            scrollPane.layout();
+            scrollPane.setVvalue(1.0);
+        });
+    }
+
+    public void appendSystemMessageWithHighlight(String prefix, String highlight, String suffix, String colorHex) {
+        Platform.runLater(() -> {
+            HBox row = new HBox();
+            row.setAlignment(javafx.geometry.Pos.CENTER);
+
+            javafx.scene.text.TextFlow flow = new javafx.scene.text.TextFlow();
+            flow.getStyleClass().add("system-msg-flow");
+            flow.setTextAlignment(javafx.scene.text.TextAlignment.CENTER);
+            flow.setMaxWidth(240);
+
+            javafx.scene.text.Text text1 = new javafx.scene.text.Text(prefix == null ? "" : prefix);
+            text1.setFill(javafx.scene.paint.Color.web("#888888")); // Default system text color
+            text1.setStyle("-fx-font-size: 10px;"); // Smaller
+
+            javafx.scene.text.Text text2 = new javafx.scene.text.Text(highlight == null ? "Unknown" : highlight);
+            text2.setFill(javafx.scene.paint.Color.web(colorHex));
+            text2.setStyle("-fx-font-size: 10px; -fx-font-weight: normal;"); // Smaller, thinner (normal weight)
+
+            javafx.scene.text.Text text3 = new javafx.scene.text.Text(suffix == null ? "" : suffix);
+            text3.setFill(javafx.scene.paint.Color.web("#888888"));
+            text3.setStyle("-fx-font-size: 10px;"); // Smaller
+
+            flow.getChildren().addAll(text1, text2, text3);
+
+            VBox container = new VBox(flow);
+            container.getStyleClass().add("system-msg");
+            container.setMaxWidth(240);
+            container.setAlignment(javafx.geometry.Pos.CENTER);
+
+            row.getChildren().add(container);
+            chatBox.getChildren().add(row);
+            scrollPane.layout();
+            scrollPane.setVvalue(1.0);
+        });
     }
 
     public VBox getView() {

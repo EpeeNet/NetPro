@@ -34,7 +34,7 @@ public class WaitingRoomPanel {
 
         VBox contentBox = new VBox(30);
         contentBox.setAlignment(Pos.CENTER);
-        contentBox.setMaxWidth(500);
+        // contentBox.setMaxWidth(800); // Removed max width to fill screen
         contentBox.getStyleClass().add("waiting-room-container");
 
         // 1. Title Area
@@ -49,8 +49,6 @@ public class WaitingRoomPanel {
         // 2. Room Code Area
         VBox codeBox = new VBox(10);
         codeBox.setAlignment(Pos.CENTER);
-        Label codeLabel = new Label("방 코드");
-        codeLabel.getStyleClass().add("input-label");
 
         HBox codeDisplayBox = new HBox(10);
         codeDisplayBox.setAlignment(Pos.CENTER);
@@ -74,7 +72,7 @@ public class WaitingRoomPanel {
         copyBtn.prefWidthProperty().bind(copyBtn.prefHeightProperty());
 
         codeDisplayBox.getChildren().addAll(codeValue, copyBtn);
-        codeBox.getChildren().addAll(codeLabel, codeDisplayBox);
+        codeBox.getChildren().addAll(codeDisplayBox);
 
         // 3. Player List Area
         VBox playerListBox = new VBox(10);
