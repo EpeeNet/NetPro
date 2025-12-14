@@ -2,7 +2,6 @@ package org.epee.client;
 
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -19,12 +18,11 @@ import javafx.application.Platform;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
-import javafx.scene.image.Image;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.paint.Color;
+import javafx.scene.image.Image;
 import javafx.stage.Stage;
-<<<<<<< Updated upstream
 import java.util.HashMap;
 import java.util.Map;
 import javafx.scene.layout.HBox;
@@ -34,8 +32,6 @@ import javafx.scene.control.Button;
 import javafx.geometry.Pos;
 import javafx.geometry.Insets;
 import javafx.scene.layout.StackPane;
-=======
->>>>>>> Stashed changes
 
 public class FencingClientApp extends Application {
 
@@ -54,21 +50,17 @@ public class FencingClientApp extends Application {
     private double y = 400;
     private boolean facingRight = true;
 
-    // 로컬 애니메이션(내 화면용) : 서버 판정과 분리
-    private boolean attackingLocal = false;
-    private double attackProgress = 0.0; // 0~0.2
-    private double bladeOffsetLocal = 0.0; // 0~30
+    private boolean attacking = false;
+    private double attackProgress = 0.0;
+    private double bladeOffset = 0.0;
 
-    // 키 반복(꾹누름) 방지
     private final Set<KeyCode> pressedOnce = new HashSet<>();
 
     private GameState latestState;
     private GameState previousState;
-
     private GameWebSocketClient wsClient;
     private final ObjectMapper mapper = new ObjectMapper();
 
-    // 캐릭터 이미지
     private Image imgIdle;
     private Image imgForward;
     private Image imgAttack;
@@ -79,7 +71,6 @@ public class FencingClientApp extends Application {
     private Label lblName1;
     private Label lblName2;
 
-    // 상태 지속 표시용(0.2초)
     private final Map<String, Long> lastAttackTimeMap = new HashMap<>();
     private final Map<String, Long> lastForwardTimeMap = new HashMap<>();
 
@@ -152,6 +143,7 @@ public class FencingClientApp extends Application {
                 }
                 new LoginScreen(primaryStage, this::startGame).show();
             });
+
             root.setCenter(waitingRoomPanel.getView());
         } else {
             root.setCenter(mainStack);
@@ -241,30 +233,40 @@ public class FencingClientApp extends Application {
     private int attackAttempts = 0;
 
     private void setupInputHandlers(Scene scene) {
+
         scene.setOnMouseClicked(e -> {
-            if (root.getCenter() == canvasContainer) canvas.requestFocus();
+            if (root.getCenter() == canvasContainer)
+                canvas.requestFocus();
         });
 
         scene.setOnKeyPressed(e -> {
             KeyCode code = e.getCode();
 
-            // OS 키 반복 입력 방지(눌렀다 떼야 다시 인정)
-            if (pressedOnce.contains(code)) return;
+            // 이미 눌린 키면 무시 (1회 입력만)
+            if (pressedOnce.contains(code))
+                return;
+
             pressedOnce.add(code);
 
-            if (roomName == null || playerId == null) return;
-
-            // === 이동: A/D 한 번에 30px ===
+            // === 이동 (A/D 1회당 30px) ===
+            // === 이동 (A/D 1회당 30px) ===
             if (code == KeyCode.A) {
+                // facingRight = false; // Don't change facing direction
                 x -= 30;
-                // 전진 모션 표시용(0.2초 유지)
-                lastForwardTimeMap.put(playerId, System.currentTimeMillis());
-            } else if (code == KeyCode.D) {
+                // Immediate feedback for P2 (A is forward)
+                if (playerId != null && "p2".equals(playerId)) {
+                    lastForwardTimeMap.put(playerId, System.currentTimeMillis());
+                }
+            }
+            if (code == KeyCode.D) {
+                // facingRight = true; // Don't change facing direction
                 x += 30;
-                lastForwardTimeMap.put(playerId, System.currentTimeMillis());
+                // Immediate feedback for P1 (D is forward)
+                if (playerId != null && "p1".equals(playerId)) {
+                    lastForwardTimeMap.put(playerId, System.currentTimeMillis());
+                }
             }
 
-<<<<<<< Updated upstream
             // === 공격 ===
             if (code == KeyCode.J && !attacking) {
                 attacking = true;
@@ -298,19 +300,6 @@ public class FencingClientApp extends Application {
                     String color = "p1".equals(playerId) ? "#00BFFF" : "#FA8072"; // Brighter Blue
                     chatPanel.appendSystemMessageWithHighlight("", name, " 공격 시도!", color);
                 }
-=======
-            // === 공격: F ===
-            if (code == KeyCode.F && !attackingLocal) {
-                attackingLocal = true;
-                attackProgress = 0.0;
-                bladeOffsetLocal = 0.0;
-
-                // 전진 모션 대신 공격 모션 표시(0.2초)
-                lastAttackTimeMap.put(playerId, System.currentTimeMillis());
-
-                // 서버에 공격 요청
-                sendMsg(new Msg("attack", roomName, playerId, x, y, facingRight, null));
->>>>>>> Stashed changes
             }
         });
 
@@ -329,6 +318,7 @@ public class FencingClientApp extends Application {
                     lastTime = now;
                     return;
                 }
+
                 double dt = (now - lastTime) / 1e9;
                 lastTime = now;
 
@@ -348,9 +338,7 @@ public class FencingClientApp extends Application {
         }
     }
 
-    // 채팅은 건드리지 않음(기존 방식 유지)
     public void sendChat(String text) {
-<<<<<<< Updated upstream
         if (text == null || text.isBlank())
             return;
 
@@ -369,36 +357,23 @@ public class FencingClientApp extends Application {
     private void update(double dt) {
         if (roomName == null || playerId == null || gameOver)
             return;
-=======
-        if (text == null || text.isBlank()) return;
-        sendMsg(new Msg("chat", roomName, playerId, x, y, facingRight, text));
-    }
 
-    private void update(double dt) {
-        if (roomName == null || playerId == null) return;
->>>>>>> Stashed changes
-
-        // 좌우만, y 고정
-        y = 300;
-
-        // 범위 제한
         x = Math.max(40, Math.min(860, x));
 
-        // ---- 로컬 찌르기 애니메이션(내 화면용) ----
-        if (attackingLocal) {
+        // ---- 찌르기 애니메이션 (내 캐릭터만) ----
+        if (attacking) {
             attackProgress += dt;
 
             if (attackProgress < 0.1) {
-                bladeOffsetLocal = (attackProgress / 0.1) * 30;
+                bladeOffset = (attackProgress / 0.1) * 30;
             } else if (attackProgress < 0.2) {
-                bladeOffsetLocal = (1 - ((attackProgress - 0.1) / 0.1)) * 30;
+                bladeOffset = (1 - ((attackProgress - 0.1) / 0.1)) * 30;
             } else {
-                attackingLocal = false;
-                bladeOffsetLocal = 0;
+                attacking = false;
+                bladeOffset = 0;
             }
         }
 
-<<<<<<< Updated upstream
         sendMsg(new Msg("move", roomName, playerId, nickname, x, y, facingRight, attacking, null));
     }
 
@@ -409,10 +384,6 @@ public class FencingClientApp extends Application {
     // ... (Msg record definition)
     public record Msg(String type, String room, String playerId, String nickname, double x, double y,
             boolean facingRight, boolean attacking, String chat) {
-=======
-        // 서버에 위치 업데이트(서버가 respawnLock이면 무시함)
-        sendMsg(new Msg("move", roomName, playerId, x, y, facingRight, null));
->>>>>>> Stashed changes
     }
 
     private void render() {
@@ -444,7 +415,6 @@ public class FencingClientApp extends Application {
                                                                                                                    // color
             drawPlayer(latestState.p2(), previousState != null ? previousState.p2() : null, Color.SALMON);
 
-<<<<<<< Updated upstream
             // Update UI labels on JavaFX thread
             Platform.runLater(() -> {
                 if (lblScore1 != null)
@@ -457,36 +427,31 @@ public class FencingClientApp extends Application {
                 if (lblName2 != null && latestState.p2() != null)
                     lblName2.setText(latestState.p2().nickname());
             });
-=======
-            g.setFill(Color.WHITE);
-            g.fillText("Room: " + latestState.room(), 20, 30);
-            g.fillText("Score P1: " + latestState.score1() + "  P2: " + latestState.score2(), 20, 50);
-        } else {
-            g.setFill(Color.WHITE);
-            g.fillText("Waiting for server state...", 360, 40);
->>>>>>> Stashed changes
         }
 
         g.restore();
     }
 
     private void drawPlayer(Player p, Player prevP, Color color) {
-        if (p == null) return;
+        if (p == null)
+            return;
 
-        // 바닥 표시(그대로)
+        // Draw indicator
         g.setFill(color);
         g.fillOval(p.x() - 15, p.y() - 5, 30, 10);
 
         if (imgIdle == null) {
-            // 이미지 로드 실패 fallback
-            g.fillRect(p.x() - 15, p.y() - 50, 30, 50);
+            // Fallback if images failed to load
+            double w = 30;
+            double h = 50;
+            g.fillRect(p.x() - w / 2, p.y() - h, w, h);
             return;
         }
 
+        // Determine image
         long now = System.currentTimeMillis();
 
-        // 서버 state를 기반으로 "공격" 표시만 하고
-        // 칼(히트박스)은 서버가 처리(클라가 그리는 건 단지 연출)
+        // Update state times
         if (p.attacking()) {
             lastAttackTimeMap.put(p.id(), now);
         }
@@ -494,7 +459,11 @@ public class FencingClientApp extends Application {
         if (prevP != null) {
             boolean moved = Math.abs(p.x() - prevP.x()) > 0.1;
             if (moved) {
-                lastForwardTimeMap.put(p.id(), now);
+                boolean movingRight = p.x() > prevP.x();
+                boolean movingForward = (movingRight && p.facingRight()) || (!movingRight && !p.facingRight());
+                if (movingForward) {
+                    lastForwardTimeMap.put(p.id(), now);
+                }
             }
         }
 
@@ -502,21 +471,19 @@ public class FencingClientApp extends Application {
         Long lastAttack = lastAttackTimeMap.get(p.id());
         Long lastForward = lastForwardTimeMap.get(p.id());
 
+        // Check persistence (0.2 seconds = 200ms)
         if (lastAttack != null && (now - lastAttack < 200)) {
             toDraw = imgAttack;
         } else if (lastForward != null && (now - lastForward < 200)) {
             toDraw = imgForward;
         }
 
-<<<<<<< Updated upstream
         double imgH = 150; // Adjusted height for better visibility
-=======
-        double imgH = 100;
->>>>>>> Stashed changes
         double ratio = toDraw.getWidth() / toDraw.getHeight();
         double imgW = imgH * ratio;
 
-        // 이미지 기본이 왼쪽 바라봄이라고 가정 → facingRight일 때 좌우반전
+        // Draw image centered at p.x, bottom at p.y
+        // Original images appear to face LEFT, so we flip when facingRight is true.
         if (p.facingRight()) {
             g.save();
             g.translate(p.x(), p.y());
@@ -619,7 +586,9 @@ public class FencingClientApp extends Application {
     }
 
     private void sendMsg(Msg msg) {
-        if (wsClient == null || !wsClient.isOpen()) return;
+        if (wsClient == null || !wsClient.isOpen())
+            return;
+
         try {
             wsClient.send(mapper.writeValueAsString(msg));
         } catch (JsonProcessingException e) {
@@ -630,7 +599,6 @@ public class FencingClientApp extends Application {
     private void onServerState(String json) {
         try {
             GameState state = mapper.readValue(json, GameState.class);
-
             Platform.runLater(() -> {
                 // Check for score changes (Successful Attack)
                 if (latestState != null) {
@@ -676,22 +644,6 @@ public class FencingClientApp extends Application {
                 previousState = latestState;
                 latestState = state;
 
-                // ✅ 점수 변화 감지 → 로컬 좌표도 즉시 스폰으로 리셋 (move 덮어쓰기 문제 해결용)
-                if (previousState != null) {
-                    boolean scored = (state.score1() != previousState.score1()) || (state.score2() != previousState.score2());
-                    if (scored && playerId != null) {
-                        if ("p1".equals(playerId)) {
-                            x = 100; y = 300; facingRight = true;
-                        } else if ("p2".equals(playerId)) {
-                            x = 700; y = 300; facingRight = false;
-                        }
-                        attackingLocal = false;
-                        attackProgress = 0.0;
-                        bladeOffsetLocal = 0.0;
-                    }
-                }
-
-                // 대기방 → 게임 전환
                 if (waitingRoomPanel != null &&
                         root.getCenter() == waitingRoomPanel.getView() &&
                         state.p2() != null) {
@@ -748,7 +700,8 @@ public class FencingClientApp extends Application {
     @Override
     public void stop() throws Exception {
         super.stop();
-        if (wsClient != null) wsClient.close();
+        if (wsClient != null)
+            wsClient.close();
     }
 
     public static void main(String[] args) {
@@ -768,7 +721,6 @@ public class FencingClientApp extends Application {
 
         private void sendJoin() {
             try {
-<<<<<<< Updated upstream
                 Msg join = new Msg(
                         "join",
                         roomName,
@@ -779,9 +731,6 @@ public class FencingClientApp extends Application {
                         false, // facingRight is not relevant for join
                         false, // attacking
                         null);
-=======
-                Msg join = new Msg("join", roomName, nickname, x, y, facingRight, null);
->>>>>>> Stashed changes
                 this.send(mapper.writeValueAsString(join));
             } catch (Exception e) {
                 e.printStackTrace();
@@ -810,7 +759,6 @@ public class FencingClientApp extends Application {
 
                         Platform.runLater(() -> {
                             if ("p1".equals(playerId)) {
-<<<<<<< Updated upstream
                                 x = 100;
                                 y = 400;
                                 facingRight = true;
@@ -818,11 +766,6 @@ public class FencingClientApp extends Application {
                                 x = 700;
                                 y = 400;
                                 facingRight = false;
-=======
-                                x = 100; y = 300; facingRight = true;
-                            } else {
-                                x = 700; y = 300; facingRight = false;
->>>>>>> Stashed changes
                             }
                             String name = nickname;
                             if (name == null || name.isEmpty())
@@ -841,13 +784,13 @@ public class FencingClientApp extends Application {
                     return;
                 }
 
-                // type 없으면 GameState
                 onServerState(message);
 
             } catch (Exception e) {
                 try {
                     onServerState(message);
-                } catch (Exception ignore) {}
+                } catch (Exception ignore) {
+                }
             }
         }
 
@@ -864,7 +807,6 @@ public class FencingClientApp extends Application {
 }
 
 /** 데이터 구조 동일 */
-<<<<<<< Updated upstream
 record Msg(String type, String room, String playerId, String nickname, double x, double y, boolean facingRight,
         String chat) {
 }
@@ -874,8 +816,3 @@ record Player(String id, String nickname, double x, double y, boolean facingRigh
 
 record GameState(String room, Player p1, Player p2, int score1, int score2, long gameStartTime) {
 }
-=======
-record Msg(String type, String room, String playerId, double x, double y, boolean facingRight, String chat) {}
-record Player(String id, double x, double y, boolean facingRight, boolean attacking) {}
-record GameState(String room, Player p1, Player p2, int score1, int score2) {}
->>>>>>> Stashed changes
