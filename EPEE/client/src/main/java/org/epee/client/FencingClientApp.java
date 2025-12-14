@@ -2,7 +2,6 @@ package org.epee.client;
 
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -16,21 +15,23 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
 import javafx.application.Platform;
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.image.Image;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.StackPane;
-import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
+import javafx.scene.image.Image;
 import javafx.stage.Stage;
+import java.util.HashMap;
+import java.util.Map;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.Button;
+import javafx.geometry.Pos;
+import javafx.geometry.Insets;
+import javafx.scene.layout.StackPane;
 
 public class FencingClientApp extends Application {
 
@@ -373,26 +374,10 @@ public class FencingClientApp extends Application {
 
     // ... (입력 핸들러 설정)
 
-<<<<<<< Updated upstream
     // ... (Msg 레코드 정의)
     public record Msg(String type, String room, String playerId, String nickname, double x, double y,
             boolean facingRight, boolean attacking, String chat) {
     }
-=======
-    // ... (Msg record definition)
-    record Msg(
-    String type,
-    String room,
-    String playerId,
-    String nickname,
-    double x,
-    double y,
-    boolean facingRight,
-    boolean attacking,
-    String chat
-) { }
-
->>>>>>> Stashed changes
 
     private void render() {
         double w = canvas.getWidth();
