@@ -46,8 +46,10 @@ public class GameServer extends WebSocketServer {
         if (room != null) {
             RoomState r = rooms.get(room);
             if (r != null && pid != null) {
-                if ("p1".equals(pid)) r.p1 = null;
-                if ("p2".equals(pid)) r.p2 = null;
+                if ("p1".equals(pid))
+                    r.p1 = null;
+                if ("p2".equals(pid))
+                    r.p2 = null;
                 broadcastState(room);
             }
         }
@@ -96,8 +98,7 @@ public class GameServer extends WebSocketServer {
 
         send(conn, Map.of(
                 "type", "assign",
-                "playerId", assigned
-        ));
+                "playerId", assigned));
 
         broadcastState(room);
     }
@@ -106,10 +107,12 @@ public class GameServer extends WebSocketServer {
         String room = socketToRoom.get(conn);
         String pid = socketToPlayerId.get(conn);
 
-        if (room == null || pid == null) return;
+        if (room == null || pid == null)
+            return;
 
         RoomState r = rooms.get(room);
-        if (r == null) return;
+        if (r == null)
+            return;
 
         double x = ((Number) map.get("x")).doubleValue();
         double y = ((Number) map.get("y")).doubleValue();
@@ -133,10 +136,12 @@ public class GameServer extends WebSocketServer {
         String room = socketToRoom.get(conn);
         String pid = socketToPlayerId.get(conn);
 
-        if (room == null || pid == null) return;
+        if (room == null || pid == null)
+            return;
 
         RoomState r = rooms.get(room);
-        if (r == null) return;
+        if (r == null)
+            return;
 
         long now = System.currentTimeMillis();
 
@@ -153,16 +158,21 @@ public class GameServer extends WebSocketServer {
     }
 
     private void checkHitWithPriority(RoomState r) {
-        if (r.p1 == null || r.p2 == null) return;
+        if (r.p1 == null || r.p2 == null)
+            return;
 
         boolean p1First = r.lastP1Update > r.lastP2Update;
 
         if (p1First) {
-            if (hit(r.p1, r.p2)) onScore(r, true);
-            if (hit(r.p2, r.p1)) onScore(r, false);
+            if (hit(r.p1, r.p2))
+                onScore(r, true);
+            if (hit(r.p2, r.p1))
+                onScore(r, false);
         } else {
-            if (hit(r.p2, r.p1)) onScore(r, false);
-            if (hit(r.p1, r.p2)) onScore(r, true);
+            if (hit(r.p2, r.p1))
+                onScore(r, false);
+            if (hit(r.p1, r.p2))
+                onScore(r, true);
         }
     }
 
@@ -179,8 +189,10 @@ public class GameServer extends WebSocketServer {
     }
 
     private void onScore(RoomState r, boolean p1Scored) {
-        if (p1Scored) r.score1++;
-        else r.score2++;
+        if (p1Scored)
+            r.score1++;
+        else
+            r.score2++;
 
         // 즉시 리스폰
         r.p1 = new Player("p1", 100, 300, true, false);
@@ -191,7 +203,8 @@ public class GameServer extends WebSocketServer {
 
     private void handleChat(WebSocket conn, Map<String, Object> map) {
         String room = socketToRoom.get(conn);
-        if (room == null) return;
+        if (room == null)
+            return;
 
         String sender = socketToPlayerId.get(conn);
         String text = (String) map.get("chat");
@@ -199,8 +212,7 @@ public class GameServer extends WebSocketServer {
         broadcast(room, Map.of(
                 "type", "chat",
                 "senderId", sender,
-                "text", text
-        ));
+                "text", text));
     }
 
     private void sendError(WebSocket conn, String msg) {
@@ -209,15 +221,17 @@ public class GameServer extends WebSocketServer {
 
     private void broadcastState(String room) {
         RoomState r = rooms.get(room);
-        if (r == null) return;
+        if (r == null)
+            return;
 
-        broadcast(room, Map.of(
-                "room", room,
-                "p1", r.p1,
-                "p2", r.p2,
-                "score1", r.score1,
-                "score2", r.score2
-        ));
+        java.util.Map<String, Object> data = new java.util.HashMap<>();
+        data.put("room", room);
+        data.put("p1", r.p1);
+        data.put("p2", r.p2);
+        data.put("score1", r.score1);
+        data.put("score2", r.score2);
+
+        broadcast(room, data);
     }
 
     private void send(WebSocket conn, Object obj) {
@@ -231,7 +245,8 @@ public class GameServer extends WebSocketServer {
         try {
             String json = mapper.writeValueAsString(obj);
             for (var e : socketToRoom.entrySet()) {
-                if (room.equals(e.getValue())) e.getKey().send(json);
+                if (room.equals(e.getValue()))
+                    e.getKey().send(json);
             }
         } catch (Exception ignored) {
         }

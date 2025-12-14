@@ -21,7 +21,10 @@ import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.paint.Color;
+import javafx.scene.image.Image;
 import javafx.stage.Stage;
+import java.util.HashMap;
+import java.util.Map;
 
 public class FencingClientApp extends Application {
 
@@ -41,14 +44,22 @@ public class FencingClientApp extends Application {
     private boolean facingRight = true;
 
     private boolean attacking = false;
-    private double attackProgress = 0.0; 
-    private double bladeOffset = 0.0;     
+    private double attackProgress = 0.0;
+    private double bladeOffset = 0.0;
 
     private final Set<KeyCode> pressedOnce = new HashSet<>();
 
     private GameState latestState;
+    private GameState previousState;
     private GameWebSocketClient wsClient;
     private final ObjectMapper mapper = new ObjectMapper();
+
+    private Image imgIdle;
+    private Image imgForward;
+    private Image imgAttack;
+
+    private final Map<String, Long> lastAttackTimeMap = new HashMap<>();
+    private final Map<String, Long> lastForwardTimeMap = new HashMap<>();
 
     private ChatPanel chatPanel;
     private Stage primaryStage;
@@ -66,6 +77,14 @@ public class FencingClientApp extends Application {
     private void startGame(String nickname, String roomName, boolean isCreator) {
         this.nickname = nickname;
         this.roomName = roomName;
+
+        try {
+            imgIdle = new Image(getClass().getResourceAsStream("/fencing1.png"));
+            imgForward = new Image(getClass().getResourceAsStream("/fencing2.png"));
+            imgAttack = new Image(getClass().getResourceAsStream("/fencing3.png"));
+        } catch (Exception e) {
+            System.err.println("Failed to load character images: " + e.getMessage());
+        }
 
         canvas = new Canvas();
         g = canvas.getGraphicsContext2D();
@@ -124,13 +143,22 @@ public class FencingClientApp extends Application {
             pressedOnce.add(code);
 
             // === 이동 (A/D 1회당 30px) ===
+            // === 이동 (A/D 1회당 30px) ===
             if (code == KeyCode.A) {
-                facingRight = false;
+                // facingRight = false; // Don't change facing direction
                 x -= 30;
+                // Immediate feedback for P2 (A is forward)
+                if (playerId != null && "p2".equals(playerId)) {
+                    lastForwardTimeMap.put(playerId, System.currentTimeMillis());
+                }
             }
             if (code == KeyCode.D) {
-                facingRight = true;
+                // facingRight = true; // Don't change facing direction
                 x += 30;
+                // Immediate feedback for P1 (D is forward)
+                if (playerId != null && "p1".equals(playerId)) {
+                    lastForwardTimeMap.put(playerId, System.currentTimeMillis());
+                }
             }
 
             // === 공격 ===
@@ -233,8 +261,8 @@ public class FencingClientApp extends Application {
         g.scale(scale, scale);
 
         if (latestState != null) {
-            drawPlayer(latestState.p1(), Color.CORNFLOWERBLUE);
-            drawPlayer(latestState.p2(), Color.SALMON);
+            drawPlayer(latestState.p1(), previousState != null ? previousState.p1() : null, Color.CORNFLOWERBLUE);
+            drawPlayer(latestState.p2(), previousState != null ? previousState.p2() : null, Color.SALMON);
 
             g.setFill(Color.WHITE);
             g.fillText("Room: " + latestState.room(), 20, 30);
@@ -244,30 +272,67 @@ public class FencingClientApp extends Application {
         g.restore();
     }
 
-    private void drawPlayer(Player p, Color color) {
+    private void drawPlayer(Player p, Player prevP, Color color) {
         if (p == null)
             return;
 
-        double w = 30;
-        double h = 50;
-
+        // Draw indicator
         g.setFill(color);
-        g.fillRect(p.x() - w / 2, p.y() - h, w, h);
+        g.fillOval(p.x() - 15, p.y() - 5, 30, 10);
 
-        boolean isMe = p.id().equals(playerId);
-        double offset = isMe ? bladeOffset : 0;
+        if (imgIdle == null) {
+            // Fallback if images failed to load
+            double w = 30;
+            double h = 50;
+            g.fillRect(p.x() - w / 2, p.y() - h, w, h);
+            return;
+        }
 
-        double tipX = p.facingRight()
-                ? p.x() + 40 + offset
-                : p.x() - 40 - offset;
+        // Determine image
+        long now = System.currentTimeMillis();
 
-        double tipY = p.y() - 30;
+        // Update state times
+        if (p.attacking()) {
+            lastAttackTimeMap.put(p.id(), now);
+        }
 
-        g.setStroke(Color.WHITE);
-        g.setLineWidth(3);
-        g.strokeLine(p.x(), tipY, tipX, tipY);
+        if (prevP != null) {
+            boolean moved = Math.abs(p.x() - prevP.x()) > 0.1;
+            if (moved) {
+                boolean movingRight = p.x() > prevP.x();
+                boolean movingForward = (movingRight && p.facingRight()) || (!movingRight && !p.facingRight());
+                if (movingForward) {
+                    lastForwardTimeMap.put(p.id(), now);
+                }
+            }
+        }
 
-        // 노란 원 삭제됨
+        Image toDraw = imgIdle;
+        Long lastAttack = lastAttackTimeMap.get(p.id());
+        Long lastForward = lastForwardTimeMap.get(p.id());
+
+        // Check persistence (0.2 seconds = 200ms)
+        if (lastAttack != null && (now - lastAttack < 200)) {
+            toDraw = imgAttack;
+        } else if (lastForward != null && (now - lastForward < 200)) {
+            toDraw = imgForward;
+        }
+
+        double imgH = 100; // Adjusted height for better visibility
+        double ratio = toDraw.getWidth() / toDraw.getHeight();
+        double imgW = imgH * ratio;
+
+        // Draw image centered at p.x, bottom at p.y
+        // Original images appear to face LEFT, so we flip when facingRight is true.
+        if (p.facingRight()) {
+            g.save();
+            g.translate(p.x(), p.y());
+            g.scale(-1, 1);
+            g.drawImage(toDraw, -imgW / 2, -imgH, imgW, imgH);
+            g.restore();
+        } else {
+            g.drawImage(toDraw, p.x() - imgW / 2, p.y() - imgH, imgW, imgH);
+        }
     }
 
     private void sendMsg(Msg msg) {
@@ -285,6 +350,7 @@ public class FencingClientApp extends Application {
         try {
             GameState state = mapper.readValue(json, GameState.class);
             Platform.runLater(() -> {
+                previousState = latestState;
                 latestState = state;
 
                 if (waitingRoomPanel != null &&
