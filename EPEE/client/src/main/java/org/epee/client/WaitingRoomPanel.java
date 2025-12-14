@@ -30,14 +30,13 @@ public class WaitingRoomPanel {
 
     private BorderPane createView() {
         BorderPane root = new BorderPane();
-        root.getStyleClass().add("root"); // Reuse main background style
-
+        root.getStyleClass().add("root"); // 메인 배경 스타일 재사용
         VBox contentBox = new VBox(30);
         contentBox.setAlignment(Pos.CENTER);
-        // contentBox.setMaxWidth(800); // Removed max width to fill screen
+        // contentBox.setMaxWidth(800); // 화면을 채우기 위해 최대 너비 제한 제거
         contentBox.getStyleClass().add("waiting-room-container");
 
-        // 1. Title Area
+        // 1. 제목 영역
         VBox titleBox = new VBox(10);
         titleBox.setAlignment(Pos.CENTER);
         Label titleLabel = new Label("⚔ ÉPÉE ⚔");
@@ -46,7 +45,7 @@ public class WaitingRoomPanel {
         subTitle.getStyleClass().add("subtitle-label");
         titleBox.getChildren().addAll(titleLabel, subTitle);
 
-        // 2. Room Code Area
+        // 2. 방 코드 영역
         VBox codeBox = new VBox(10);
         codeBox.setAlignment(Pos.CENTER);
 
@@ -64,7 +63,7 @@ public class WaitingRoomPanel {
             content.putString(roomCode);
             clipboard.setContent(content);
 
-            // Optional: Show toast or feedback
+            // 선택사항: 토스트 메시지나 피드백 표시
         });
 
         // 버튼 높이를 입력창(Label) 높이와 동일하게 설정하고, 너비도 높이와 같게 설정 (정사각형)
@@ -74,7 +73,7 @@ public class WaitingRoomPanel {
         codeDisplayBox.getChildren().addAll(codeValue, copyBtn);
         codeBox.getChildren().addAll(codeDisplayBox);
 
-        // 3. Player List Area
+        // 3. 플레이어 목록 영역
         VBox playerListBox = new VBox(10);
         playerListBox.getStyleClass().add("player-list-box");
 
@@ -102,7 +101,7 @@ public class WaitingRoomPanel {
 
         playerListBox.getChildren().addAll(hostRow, guestRow);
 
-        // 4. Loading Indicator
+        // 4. 로딩 표시기
         VBox loadingBox = new VBox(15);
         loadingBox.setAlignment(Pos.CENTER);
         ProgressIndicator spinner = new ProgressIndicator();
@@ -113,13 +112,13 @@ public class WaitingRoomPanel {
         shareLabel.getStyleClass().add("share-text");
         loadingBox.getChildren().addAll(spinner, waitingLabel, shareLabel);
 
-        // 5. Cancel Button
+        // 5. 취소 버튼
         Button cancelBtn = new Button("취소");
         cancelBtn.getStyleClass().add("cancel-btn");
         cancelBtn.setMaxWidth(Double.MAX_VALUE);
         cancelBtn.setOnAction(e -> onCancel.run());
 
-        // Add all to content box
+        // 컨텐츠 박스에 모두 추가
         contentBox.getChildren().addAll(titleBox, codeBox, playerListBox, loadingBox, cancelBtn);
 
         root.setCenter(contentBox);

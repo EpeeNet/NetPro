@@ -22,7 +22,7 @@ public class LoginScreen {
         BorderPane root = new BorderPane();
         root.getStyleClass().add("root");
 
-        // === Header ===
+        // === 헤더 ===
         javafx.scene.layout.VBox headerBox = new javafx.scene.layout.VBox(10);
         headerBox.setAlignment(javafx.geometry.Pos.CENTER);
         headerBox.setPadding(new javafx.geometry.Insets(50, 0, 30, 0));
@@ -93,12 +93,9 @@ public class LoginScreen {
         controlsHeader.getStyleClass().add("section-header");
         controlsPanel.getChildren().add(controlsHeader);
 
-        // 조작법 목록 (아이콘 대신 텍스트/이모지 사용)
-        controlsPanel.getChildren().add(createKeyRow("↑ 전진", "W"));
-        controlsPanel.getChildren().add(createKeyRow("↓ 후진", "S"));
-        controlsPanel.getChildren().add(createKeyRow("⚡ 찌르기 (공격)", "F"));
-        controlsPanel.getChildren().add(createKeyRow("🛡 막기 (방어)", "Shift"));
-        controlsPanel.getChildren().add(createKeyRow("↑ 점프", "J"));
+        // 조작법 목록
+        controlsPanel.getChildren().add(createKeyRow("이동", "A / D"));
+        controlsPanel.getChildren().add(createKeyRow("찌르기 (공격)", "F"));
 
         // 서버 상태 표시
         javafx.scene.layout.VBox statusPanel = new javafx.scene.layout.VBox(10);
@@ -110,7 +107,7 @@ public class LoginScreen {
         statusPanel.getChildren().addAll(statusHeader, statusLabel);
 
         // '온라인' 표시
-        statusLabel.setText("📶 Online");
+        statusLabel.setText("📶 온라인");
         if (!statusLabel.getStyleClass().contains("status-online")) {
             statusLabel.getStyleClass().add("status-online");
         }
@@ -122,8 +119,7 @@ public class LoginScreen {
         mainContainer.getChildren().addAll(loginPanel, rightColumn);
 
         // 메인 컨테이너를 화면 중앙에 배치
-        javafx.scene.layout.VBox centerBox = new javafx.scene.layout.VBox(20); // Keep centerBox for consistent
-                                                                               // padding/alignment if needed
+        javafx.scene.layout.VBox centerBox = new javafx.scene.layout.VBox(20); // 중앙 정렬용 박스
         centerBox.setAlignment(javafx.geometry.Pos.CENTER);
         centerBox.setPadding(new javafx.geometry.Insets(0, 50, 0, 50));
         centerBox.getChildren().clear(); // 이전 내용 지우기
@@ -144,11 +140,11 @@ public class LoginScreen {
             String nick = nickInput.getText().trim();
             String room = roomInput.getText().trim();
             if (nick.isEmpty()) {
-                // Show error or shake
+                // 에러 표시 또는 흔들림 효과
                 return;
             }
             if (room.isEmpty()) {
-                // Show error
+                // 에러 표시
                 return;
             }
             onStartGame.onStart(nick, room, false);
@@ -162,7 +158,7 @@ public class LoginScreen {
         scrollPane.getStyleClass().add("root"); // 스크롤 패널에도 어두운 배경 적용
 
         // 초기 창 크기 설정 (1000x700)
-        Scene scene = new Scene(scrollPane, 1000, 700); // Increased size per user request
+        Scene scene = new Scene(scrollPane, 1000, 700); // 사용자 요청에 따라 크기 증가
         scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
 
         primaryStage.setTitle("ÉPÉE - Login");

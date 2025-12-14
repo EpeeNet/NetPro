@@ -89,7 +89,7 @@ public class GameServer extends WebSocketServer {
 
         String assigned;
 
-        // Reset scores whenever a new player joins (start of new match or session)
+        // 새 플레이어 입장 시 점수 초기화 (새 매치 시작)
         if (r.p1 == null || r.p2 == null) {
             r.score1 = 0;
             r.score2 = 0;
@@ -101,7 +101,7 @@ public class GameServer extends WebSocketServer {
         } else if (r.p2 == null) {
             assigned = "p2";
             r.p2 = new Player("p2", nickname, 700, 400, false, false);
-            r.gameStartTime = System.currentTimeMillis(); // Start game time when P2 joins
+            r.gameStartTime = System.currentTimeMillis(); // P2 입장 시 게임 시간 시작
         } else {
             sendError(conn, "Room full");
             return;
@@ -132,7 +132,7 @@ public class GameServer extends WebSocketServer {
         double y = ((Number) map.get("y")).doubleValue();
         boolean facing = (Boolean) map.get("facingRight");
 
-        // Extract attacking state, default to false if missing
+        // 공격 상태 추출 (기본값 false)
         Object attackingObj = map.get("attacking");
         boolean attacking = attackingObj instanceof Boolean ? (Boolean) attackingObj : false;
 
@@ -150,8 +150,7 @@ public class GameServer extends WebSocketServer {
         broadcastState(room);
     }
 
-    // ... (handleAttack remains similar or can be deprecated if move handles it,
-    // but keep for now)
+    // ... (handleAttack은 move와 유사하지만 유지)
 
     // ...
 
@@ -217,7 +216,7 @@ public class GameServer extends WebSocketServer {
     private void onScore(RoomState r, boolean p1Scored) {
         long now = System.currentTimeMillis();
         if (now - r.lastScoreTime < 1000)
-            return; // Debounce: 1 second cooldown
+            return; // 디바운스: 1초 쿨다운
 
         r.lastScoreTime = now;
 

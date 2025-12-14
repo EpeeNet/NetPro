@@ -104,8 +104,8 @@ public class FencingClientApp extends Application {
         g = canvas.getGraphicsContext2D();
 
         canvasContainer = new StackPane(canvas);
-        // canvasContainer.setStyle("-fx-background-color: #2F4F4F;"); // Removed for
-        // image background
+        // canvasContainer.setStyle("-fx-background-color: #2F4F4F;"); // 이미지 배경 사용으로
+        // 제거됨
         canvas.widthProperty().bind(canvasContainer.widthProperty());
         canvas.heightProperty().bind(canvasContainer.heightProperty());
 
@@ -119,11 +119,11 @@ public class FencingClientApp extends Application {
         BorderPane uiOverlay = new BorderPane();
         uiOverlay.setTop(scoreBoard);
         uiOverlay.setBottom(bottomBar);
-        uiOverlay.setPickOnBounds(false); // Allow clicks to pass through to canvas
+        uiOverlay.setPickOnBounds(false); // 클릭이 캔버스로 전달되도록 설정
 
         StackPane mainStack = new StackPane(canvasContainer, uiOverlay);
 
-        double initialHeight = isCreator ? 700 : 600; // Increased height for UI
+        double initialHeight = isCreator ? 700 : 600; // UI 공간 확보를 위해 높이 증가
         Scene scene = new Scene(root, 1000, initialHeight);
         scene.getStylesheets().add(getClass().getResource("/ui_styles.css").toExternalForm());
 
@@ -149,7 +149,7 @@ public class FencingClientApp extends Application {
             root.setCenter(mainStack);
             root.setRight(chatPanel.getView());
             canvas.requestFocus();
-            canvas.setOnMouseClicked(e -> canvas.requestFocus()); // Regain focus on click
+            canvas.setOnMouseClicked(e -> canvas.requestFocus()); // 클릭 시 포커스 획득
         }
     }
 
@@ -186,10 +186,7 @@ public class FencingClientApp extends Application {
 
         topBox.getChildren().addAll(lblName1, box1, vs, box2, lblName2);
 
-        // Round info below or integrated? The image shows it below VS.
-        // Let's make a VBox for the whole top area if we want round info.
-        // For now, keeping it simple as per image layout structure.
-        // Actually, let's add round info below.
+        // 라운드 정보는 추후 추가 가능
 
         return topBox;
     }
@@ -202,8 +199,7 @@ public class FencingClientApp extends Application {
 
         bottomBox.getChildren().addAll(
                 createControlGroup("< >", "이동", "A", "D"),
-                createControlGroup("⚡", "찌르기", "J"),
-                createControlGroup("🛡", "막기", "Shift"));
+                createControlGroup("⚡", "찌르기", "J"));
         return bottomBox;
     }
 
@@ -249,19 +245,18 @@ public class FencingClientApp extends Application {
             pressedOnce.add(code);
 
             // === 이동 (A/D 1회당 30px) ===
-            // === 이동 (A/D 1회당 30px) ===
             if (code == KeyCode.A) {
-                // facingRight = false; // Don't change facing direction
+                // facingRight = false; // 방향 전환 안함
                 x -= 30;
-                // Immediate feedback for P2 (A is forward)
+                // P2 즉시 반응 (A가 전진)
                 if (playerId != null && "p2".equals(playerId)) {
                     lastForwardTimeMap.put(playerId, System.currentTimeMillis());
                 }
             }
             if (code == KeyCode.D) {
-                // facingRight = true; // Don't change facing direction
+                // facingRight = true; // 방향 전환 안함
                 x += 30;
-                // Immediate feedback for P1 (D is forward)
+                // P1 즉시 반응 (D가 전진)
                 if (playerId != null && "p1".equals(playerId)) {
                     lastForwardTimeMap.put(playerId, System.currentTimeMillis());
                 }
@@ -275,9 +270,9 @@ public class FencingClientApp extends Application {
 
                 sendMsg(new Msg("attack", roomName, playerId, nickname, x, y, facingRight, true, null));
 
-                // System Message: Attack Attempt (Client-side prediction)
-                // Only show if we think we missed (simple reach check)
-                // Reach = 70, Y diff < 40
+                // 시스템 메시지: 공격 시도 (클라이언트 예측)
+                // 빗나갈 것으로 예상될 때만 표시 (단순 거리 체크)
+                // 리치 = 70, Y 차이 < 40
                 boolean likelyHit = false;
                 if (latestState != null) {
                     Player me = "p1".equals(playerId) ? latestState.p1() : latestState.p2();
@@ -347,10 +342,10 @@ public class FencingClientApp extends Application {
                 roomName,
                 playerId,
                 nickname,
-                0, // x
-                0, // y
-                false, // facingRight
-                false, // attacking
+                0, // x 좌표
+                0, // y 좌표
+                false, // 방향
+                false, // 공격 상태
                 text));
     }
 
@@ -377,11 +372,9 @@ public class FencingClientApp extends Application {
         sendMsg(new Msg("move", roomName, playerId, nickname, x, y, facingRight, attacking, null));
     }
 
-    // ... (in setupInputHandlers)
-    // sendMsg(new Msg("attack", roomName, playerId, nickname, x, y, facingRight,
-    // true, null));
+    // ... (입력 핸들러 설정)
 
-    // ... (Msg record definition)
+    // ... (Msg 레코드 정의)
     public record Msg(String type, String room, String playerId, String nickname, double x, double y,
             boolean facingRight, boolean attacking, String chat) {
     }
@@ -390,7 +383,7 @@ public class FencingClientApp extends Application {
         double w = canvas.getWidth();
         double h = canvas.getHeight();
 
-        // Draw Background
+        // 배경 그리기
         if (imgBackground != null) {
             g.drawImage(imgBackground, 0, 0, w, h);
         } else {
@@ -410,12 +403,12 @@ public class FencingClientApp extends Application {
         g.scale(scale, scale);
 
         if (latestState != null) {
-            drawPlayer(latestState.p1(), previousState != null ? previousState.p1() : null, Color.web("#00BFFF")); // Updated
-                                                                                                                   // P1
-                                                                                                                   // color
+            drawPlayer(latestState.p1(), previousState != null ? previousState.p1() : null, Color.web("#00BFFF")); // P1
+                                                                                                                   // 색상
+                                                                                                                   // 업데이트
             drawPlayer(latestState.p2(), previousState != null ? previousState.p2() : null, Color.SALMON);
 
-            // Update UI labels on JavaFX thread
+            // JavaFX 스레드에서 UI 라벨 업데이트
             Platform.runLater(() -> {
                 if (lblScore1 != null)
                     lblScore1.setText(String.valueOf(latestState.score1()));
@@ -436,22 +429,22 @@ public class FencingClientApp extends Application {
         if (p == null)
             return;
 
-        // Draw indicator
+        // 위치 표시기 그리기
         g.setFill(color);
         g.fillOval(p.x() - 15, p.y() - 5, 30, 10);
 
         if (imgIdle == null) {
-            // Fallback if images failed to load
+            // 이미지 로드 실패 시 대체 처리
             double w = 30;
             double h = 50;
             g.fillRect(p.x() - w / 2, p.y() - h, w, h);
             return;
         }
 
-        // Determine image
+        // 이미지 결정
         long now = System.currentTimeMillis();
 
-        // Update state times
+        // 상태 시간 업데이트
         if (p.attacking()) {
             lastAttackTimeMap.put(p.id(), now);
         }
@@ -471,19 +464,19 @@ public class FencingClientApp extends Application {
         Long lastAttack = lastAttackTimeMap.get(p.id());
         Long lastForward = lastForwardTimeMap.get(p.id());
 
-        // Check persistence (0.2 seconds = 200ms)
+        // 애니메이션 지속 시간 확인 (0.2초 = 200ms)
         if (lastAttack != null && (now - lastAttack < 200)) {
             toDraw = imgAttack;
         } else if (lastForward != null && (now - lastForward < 200)) {
             toDraw = imgForward;
         }
 
-        double imgH = 150; // Adjusted height for better visibility
+        double imgH = 150; // 가시성을 위해 높이 조정
         double ratio = toDraw.getWidth() / toDraw.getHeight();
         double imgW = imgH * ratio;
 
-        // Draw image centered at p.x, bottom at p.y
-        // Original images appear to face LEFT, so we flip when facingRight is true.
+        // 이미지 그리기 (중앙 하단 정렬)
+        // 원본 이미지가 왼쪽을 보므로 facingRight일 때 반전 처리
         if (p.facingRight()) {
             g.save();
             g.translate(p.x(), p.y());
@@ -499,40 +492,40 @@ public class FencingClientApp extends Application {
     private long gameStartTime = 0;
 
     private void showGameOverPopup(String winnerId, String winnerName, int score1, int score2) {
-        // Create Result Screen Layout
+        // 결과 화면 레이아웃 생성
         StackPane resultScreen = new StackPane();
-        resultScreen.getStyleClass().add("game-over-overlay"); // Reuse overlay style for full background
+        resultScreen.getStyleClass().add("game-over-overlay"); // 전체 배경을 위해 오버레이 스타일 재사용
 
         VBox window = new VBox(0);
         window.getStyleClass().add("game-over-window");
 
-        // Header
+        // 헤더
         VBox header = new VBox(5);
         header.getStyleClass().add("game-over-header");
 
-        boolean isWin = winnerId.equals(playerId); // Compare IDs for accuracy
+        boolean isWin = winnerId.equals(playerId); // 정확성을 위해 ID 비교
 
         Label title = new Label(isWin ? "🏆 승리 🏆" : "💀 패배 💀");
         title.getStyleClass().add("game-over-title");
         if (!isWin)
-            title.setStyle("-fx-text-fill: #ff4444;"); // Red for defeat
+            title.setStyle("-fx-text-fill: #ff4444;"); // 패배 시 빨간색
 
         Label winner = new Label("승리자: " + winnerName);
         winner.getStyleClass().add("game-over-winner");
         header.getChildren().addAll(title, winner);
 
-        // Body
+        // 본문
         VBox body = new VBox(10);
         body.getStyleClass().add("game-over-body");
 
-        // Stats
+        // 통계
         body.getChildren().add(createStatRow("🎯", "최종 점수", score1 + " - " + score2));
 
-        // Successful Attacks (My score)
+        // 성공한 공격 (내 점수)
         int myScore = "p1".equals(playerId) ? score1 : score2;
         body.getChildren().add(createStatRow("◎", "성공한 공격", String.valueOf(myScore)));
 
-        // Attack Attempts (Failed attempts = Total - Success)
+        // 공격 시도 (실패한 횟수 = 전체 시도 - 성공)
         int failedAttempts = Math.max(0, attackAttempts - myScore);
         body.getChildren().add(createStatRow("⚡", "공격 시도", String.valueOf(failedAttempts)));
 
@@ -541,7 +534,7 @@ public class FencingClientApp extends Application {
         long sec = duration % 60;
         body.getChildren().add(createStatRow("🕒", "경기 시간", String.format("%d:%02d", min, sec)));
 
-        // Buttons
+        // 버튼
         Button lobbyBtn = new Button("로비로 돌아가기");
         lobbyBtn.getStyleClass().add("lobby-button");
         lobbyBtn.setOnAction(e -> {
@@ -563,7 +556,7 @@ public class FencingClientApp extends Application {
         window.getChildren().addAll(header, body);
         resultScreen.getChildren().add(window);
 
-        // Switch View
+        // 화면 전환
         root.setCenter(resultScreen);
     }
 
@@ -600,7 +593,7 @@ public class FencingClientApp extends Application {
         try {
             GameState state = mapper.readValue(json, GameState.class);
             Platform.runLater(() -> {
-                // Check for score changes (Successful Attack)
+                // 점수 변화 확인 (공격 성공)
                 if (latestState != null) {
                     if (state.score1() > latestState.score1()) {
                         if (chatPanel != null) {
@@ -624,7 +617,7 @@ public class FencingClientApp extends Application {
                     }
                 }
 
-                // Sync position if server forced a reset (large discrepancy)
+                // 서버가 강제 리셋을 요청한 경우 위치 동기화 (큰 차이 발생 시)
                 Player myPlayer = null;
                 if (state.p1() != null && state.p1().id().equals(playerId)) {
                     myPlayer = state.p1();
@@ -634,10 +627,10 @@ public class FencingClientApp extends Application {
 
                 if (myPlayer != null) {
                     double dist = Math.abs(x - myPlayer.x()) + Math.abs(y - myPlayer.y());
-                    if (dist > 50) { // Threshold for forced reset
+                    if (dist > 50) { // 강제 리셋 임계값
                         x = myPlayer.x();
                         y = myPlayer.y();
-                        attacking = false; // Reset attack state too
+                        attacking = false; // 공격 상태도 초기화
                     }
                 }
 
@@ -648,12 +641,11 @@ public class FencingClientApp extends Application {
                         root.getCenter() == waitingRoomPanel.getView() &&
                         state.p2() != null) {
 
-                    // Game Start
-                    // Game Start
+                    // 게임 시작
                     if (state.gameStartTime() > 0) {
                         gameStartTime = state.gameStartTime();
                     } else {
-                        gameStartTime = System.currentTimeMillis(); // Fallback
+                        gameStartTime = System.currentTimeMillis(); // 대체값
                     }
                     gameOver = false;
                     attackAttempts = 0;
@@ -669,7 +661,7 @@ public class FencingClientApp extends Application {
 
                     root.setCenter(mainStack);
                     root.setRight(chatPanel.getView());
-                    primaryStage.setHeight(600); // Adjusted height
+                    primaryStage.setHeight(600); // 높이 조정
                     canvas.requestFocus();
 
                     if (chatPanel != null) {
@@ -677,11 +669,10 @@ public class FencingClientApp extends Application {
                     }
                 }
 
-                // Check Game Over
-                // Check Game Over
+                // 게임 종료 확인
                 if (!gameOver && (state.score1() >= 5 || state.score2() >= 5)) {
                     gameOver = true;
-                    // Determine winner ID
+                    // 승자 ID 결정
                     String winnerId = (state.score1() >= 5) ? "p1" : "p2";
                     String winnerName = (state.score1() >= 5) ? (state.p1() != null ? state.p1().nickname() : "p1")
                             : (state.p2() != null ? state.p2().nickname() : "p2");
@@ -724,12 +715,12 @@ public class FencingClientApp extends Application {
                 Msg join = new Msg(
                         "join",
                         roomName,
-                        null, // playerId is not yet assigned
+                        null, // 플레이어 ID는 아직 할당되지 않음
                         nickname,
-                        0, // x is not relevant for join
-                        0, // y is not relevant for join
-                        false, // facingRight is not relevant for join
-                        false, // attacking
+                        0, // x 좌표 (입장 시 무관)
+                        0, // y 좌표 (입장 시 무관)
+                        false, // 방향 (입장 시 무관)
+                        false, // 공격 상태
                         null);
                 this.send(mapper.writeValueAsString(join));
             } catch (Exception e) {
@@ -749,7 +740,7 @@ public class FencingClientApp extends Application {
                         String sender = (String) map.get("senderId");
                         String nick = (String) map.get("nickname");
                         String text = (String) map.get("text");
-                        // Use nickname if available, otherwise senderId
+                        // 닉네임이 있으면 사용, 없으면 senderId 사용
                         String displayName = (nick != null && !nick.isEmpty()) ? nick : sender;
                         Platform.runLater(() -> chatPanel.appendMessage(sender, displayName, text));
                         return;
@@ -770,7 +761,7 @@ public class FencingClientApp extends Application {
                             String name = nickname;
                             if (name == null || name.isEmpty())
                                 name = playerId;
-                            String color = "p1".equals(playerId) ? "#00BFFF" : "#FA8072"; // Brighter Blue
+                            String color = "p1".equals(playerId) ? "#00BFFF" : "#FA8072"; // 더 밝은 파란색
                             chatPanel.appendSystemMessageWithHighlight("System", name, " 환영합니다! (" + playerId + ")",
                                     color);
                         });
